@@ -16,11 +16,12 @@ app.use(cors());
 
 // MySQL Database connection
 const dbConfig = {
-  host: 'db4free.net',
-  user: 'scalefusion',
-  password: 'Deep@#$123',
-  database: 'devices_db',
+  host: process.env.DB_HOST || 'localhost', // Default value in case env variable is not set
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'devices_db',
 };
+
 
 // Initialize database and create table if not exists
 const initializeDatabase = async () => {
