@@ -16,10 +16,11 @@ app.use(cors());
 
 // MySQL Database connection
 const dbConfig = {
-  host: process.env.DB_HOST || 'localhost', // Default value in case env variable is not set
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'devices_db',
+  host:'mysql.railway.internal', // Default value in case env variable is not set
+  user: 'root',
+  password:  'ZXXpbahTXoxLeVYxeGIMpdjdruSZqRqv',
+  database:'railway',
+  port: '3306'
 };
 
 
@@ -204,7 +205,7 @@ const fetchAndStoreActiveStatusData = async (fromDate, toDate) => {
 
       // Delay between batches to respect rate limits
       if (batch.length === batchSize) {
-        await new Promise((resolve) => setTimeout(resolve, 20000));
+        await new Promise((resolve) => setTimeout(resolve, 10000));
       }
     }
 
