@@ -1,5 +1,3 @@
-// Backend: Express server to fetch API data and store it in MySQL
-
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
@@ -9,7 +7,7 @@ require('dotenv').config();
 
 
 const app = express();
-const PORT = 3001;
+const PORT = 3306;
 const cache = new NodeCache({ stdTTL: 30 });
 const SCALEFUSION_API_KEY = process.env.REACT_APP_API_KEY;
 
@@ -18,9 +16,9 @@ app.use(cors());
 
 // MySQL Database connection
 const dbConfig = {
-  host: 'localhost',
-  user: 'root',
-  password: '',
+  host: 'db4free.net',
+  user: 'scalefusion',
+  password: 'Deep@#$123',
   database: 'devices_db',
 };
 
