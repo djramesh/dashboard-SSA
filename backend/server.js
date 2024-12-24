@@ -20,22 +20,22 @@ app.use(cors(corsOptions));
 
 
 // MySQL Database connection
-const dbConfig = {
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT,
-  connectTimeout: 10000,
-};
+// const dbConfig = {
+//   host: process.env.DB_HOST,
+//   user: process.env.DB_USER,
+//   password: process.env.DB_PASSWORD,
+//   database: process.env.DB_NAME,
+//   port: process.env.DB_PORT,
+//   connectTimeout: 10000,
+// };
 
-// const urlDB = `mysql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.
-// DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`
+const urlDB = `mysql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.
+DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`
 
 //changes here
 // Initialize database and create table if not exists
 const initializeDatabase = async () => {
-  const connection = await mysql.createConnection(dbConfig);
+  const connection = await mysql.createConnection(urlDB);
   await connection.execute(`
     CREATE TABLE IF NOT EXISTS devices (
       id INT PRIMARY KEY,
@@ -59,7 +59,7 @@ initializeDatabase().catch((err) => console.error("Database initialization faile
 const fetchAndStoreData = async () => {
   let nextCursor = null;
   try {
-    const connection = await mysql.createConnection(dbConfig);
+    const connection = await mysql.createConnection(urlDB);
 
     do {
       const response = await axios.get(
@@ -116,7 +116,7 @@ fetchAndStoreData();
 
 const fetchAndStoreActiveStatusData = async (fromDate, toDate) => {
   try {
-    const connection = await mysql.createConnection(dbConfig);
+    const connection = await mysql.createConnection(urlDB);
 
     let currentPage = 1;
     const activeDataMap = new Map();
@@ -369,7 +369,7 @@ app.get('/api/devices', async (req, res) => {
   const offset = nextCursor ? Number(nextCursor) : 0;
 
   try {
-    const connection = await mysql.createConnection(dbConfig);
+    const connection = await mysql.createConnection(urlDB);
 
     let query = `SELECT * FROM devices WHERE 1=1`;
     const params = [];
@@ -430,7 +430,7 @@ app.get('/api/devices', async (req, res) => {
 // API to get Active and Inactive device counts
 app.get('/api/device-stats', async (req, res) => {
   try {
-    const connection = await mysql.createConnection(dbConfig);
+    const connection = await mysql.createConnection(urlDB);
 
     const [[stats]] = await connection.query(
       `SELECT 
