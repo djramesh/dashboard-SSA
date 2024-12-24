@@ -125,7 +125,7 @@ const DeviceData = () => {
     try {
       // Send request to backend with date range
       const response = await axios.get(
-        "https://dashboard-ssa-production.up.railway.app/fetchActiveStatusData",
+        "https://dashboard-ssa-production.up.railway.app/api/fetchActiveStatusData",
         {
           params: { fromDate: startDate, toDate: endDate },
         }
