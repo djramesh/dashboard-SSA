@@ -179,7 +179,6 @@ const DeviceData = () => {
     }
   }, [selectedDistrict, data]);
 
-  // useEffect(() => {
   //   if (filteredData.length > 0) {
   //     const updatedDistrictData = districtsOfAssam.map((district) => {
   //       const districtDevices = filteredData.filter((item) => item.district === district);

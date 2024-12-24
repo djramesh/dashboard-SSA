@@ -213,7 +213,7 @@ const fetchAndStoreActiveStatusData = async (fromDate, toDate) => {
 
       // Delay between batches to respect rate limits
       if (batch.length === batchSize) {
-        await new Promise((resolve) => setTimeout(resolve, 10000));
+        await new Promise((resolve) => setTimeout(resolve, 13000));
       }
     }
 
@@ -332,17 +332,6 @@ const convertToHumanReadable = (seconds) => {
 
   return result.trim();
 };
-
-// Helper function to convert duration
-// const formatDuration = (seconds) => {
-//   if (seconds < 60) return `${seconds} seconds`;
-//   const minutes = Math.floor(seconds / 60);
-//   if (minutes < 60) return `${minutes} minutes`;
-//   const hours = Math.floor(minutes / 60);
-//   if (hours < 24) return `${hours} hours ${minutes % 60} minutes`;
-//   const days = Math.floor(hours / 24);
-//   return `${days} days ${hours % 24} hours`;
-// };
 
 // API endpoint to trigger active status data fetch
 app.get("/api/fetchActiveStatusData", async (req, res) => {
