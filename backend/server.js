@@ -29,8 +29,7 @@ app.use(cors(corsOptions));
 //   connectTimeout: 10000,
 // };
 
-const urlDB = `mysql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.
-DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`
+const urlDB = "mysql://root:ZXXpbahTXoxLeVYxeGIMpdjdruSZqRqv@mysql.railway.internal:3306/railway"
 
 //changes here
 // Initialize database and create table if not exists
