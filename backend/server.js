@@ -13,7 +13,7 @@ const SCALEFUSION_API_KEY = process.env.REACT_APP_API_KEY;
 
 // Enable CORS
 const corsOptions = {
-  origin: 'https://sage-torrone-a56964.netlify.app',
+  origin: 'https://ssasmartclassroomproject.netlify.app/',
   optionsSuccessStatus: 200,
 };
 app.use(cors(corsOptions));
