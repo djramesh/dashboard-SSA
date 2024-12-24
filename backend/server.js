@@ -28,7 +28,7 @@ const dbConfig = {
   port: process.env.DB_PORT,
 };
 
-
+//changes here
 // Initialize database and create table if not exists
 const initializeDatabase = async () => {
   const connection = await mysql.createConnection(dbConfig);
