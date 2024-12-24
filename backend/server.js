@@ -7,12 +7,17 @@ require('dotenv').config();
 
 
 const app = express();
-const PORT = 3306;
+const PORT = process.env.PORT || 3001
 const cache = new NodeCache({ stdTTL: 30 });
 const SCALEFUSION_API_KEY = process.env.REACT_APP_API_KEY;
 
 // Enable CORS
-app.use(cors());
+const corsOptions = {
+  origin: 'https://sage-torrone-a56964.netlify.app',
+  optionsSuccessStatus: 200,
+};
+app.use(cors(corsOptions));
+
 
 // MySQL Database connection
 const dbConfig = {
