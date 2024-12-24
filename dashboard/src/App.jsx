@@ -5,6 +5,8 @@ import axios from "axios";
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import * as XLSX from "xlsx";
+require('dotenv').config();
+
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -124,7 +126,7 @@ const DeviceData = () => {
     try {
       // Send request to backend with date range
       const response = await axios.get(
-        "http://localhost:3001/api/fetchActiveStatusData",
+        `${process.env.REACT_APP_BACKEND_URL}/fetchActiveStatusData`,
         {
           params: { fromDate: startDate, toDate: endDate },
         }
@@ -148,7 +150,7 @@ const DeviceData = () => {
   const fetchData = async () => {
     setLoading(true); // Start loading
     try {
-      const response = await axios.get("http://localhost:3001/api/devices");
+      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/devices`);
       const devices = response.data.devices || [];
       setData(devices);
       setFilteredData(devices);
