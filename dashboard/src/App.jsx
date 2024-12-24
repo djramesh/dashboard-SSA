@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "./navbar";
+import "./navbar.css";
 import "./App.css";
 import axios from "axios";
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import * as XLSX from "xlsx";
-require('dotenv').config();
-
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -603,6 +602,7 @@ const DeviceData = () => {
           Next
         </button>
       </div>
+      <p>Powered by SCALEFUSION</p>
     </div>
   );
 };
@@ -668,11 +668,11 @@ const styles = {
 
     cursor: "pointer",
   },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-    marginTop: "20px",
-  },
+  // table: {
+  //   width: "100%",
+  //   borderCollapse: "collapse",
+  //   marginTop: "20px",
+  // },
   tableHeader: {
     backgroundColor: "#0096FF",
     color: "white",
