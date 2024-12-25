@@ -149,7 +149,9 @@ const DeviceData = () => {
   const fetchData = async () => {
     setLoading(true); // Start loading
     try {
-      const response = await axios.get("https://dashboard-ssa-production.up.railway.app/api/devices");
+      const response = await axios.get(
+        "https://dashboard-ssa-production.up.railway.app/api/devices"
+      );
       const devices = response.data.devices || [];
       setData(devices);
       setFilteredData(devices);
@@ -339,7 +341,7 @@ const DeviceData = () => {
     return (
       <div className="loader" style={styles.loader}>
         <img
-          src="src/assets/loading.gif"
+          src="/loading.gif"
           alt="Loading..."
           style={{ width: "130px", height: "130px" }}
         />
@@ -352,8 +354,8 @@ const DeviceData = () => {
       <Navbar />
       <h1 style={styles.header}>Dashboard of Assam Smart Classroom Project</h1>
       <h2 style={styles.header}>Device Data</h2>
-      <div style={styles.chartContainer}>
-        <div style={styles.summary}>
+      <div className="chartContainer" style={styles.chartContainer}>
+        <div className="summary" style={styles.summary}>
           <h3>Total Devices: {totalDevices}</h3>
           <p
             style={styles.activeCount}
@@ -414,7 +416,7 @@ const DeviceData = () => {
         <div style={styles.pieChart}>
           <Pie data={pieChartData} />
         </div>
-        <div style={styles.districtContainer}>
+        <div className="districtContainer" style={styles.districtContainer}>
           <h4 style={styles.districtHeader}>
             District Wise Data for Date Range: <br />
             <span style={{ opacity: 0.6, fontSize: "0.9rem" }}>
@@ -435,14 +437,14 @@ const DeviceData = () => {
                 </p>
                 <p style={styles.activeCount}>Connected: {item.connected} </p>
                 <p style={styles.inactiveCount}>
-                  Not Connected: {item.notConnected}{" "}
+                 Not Connected: {item.notConnected}{" "}
                 </p>
               </div>
             ))}
           </div>
         </div>
       </div>
-      <div style={{ display: "flex", alignItems: "center" }}>
+      {/* <div style={{ display: "flex", alignItems: "center" }}>
         <div style={styles.datePickerContainer}>
           <p>From :</p>{" "}
           <input
@@ -488,7 +490,55 @@ const DeviceData = () => {
         <button onClick={handleDownload} style={styles.downloadButton}>
           Download Excel
         </button>
+      </div> */}
+      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap" }}>
+        <div className="datePickerContainer">
+          <p>From :</p>{" "}
+          <input
+            type="date" /*  */
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            style={styles.dateInput}
+          />
+          <p> To : </p>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            style={styles.dateInput}
+          />
+          <button onClick={handleFetchData} style={styles.fetchButton}>
+            Fetch Data
+          </button>
+        </div>
+        <div style={{ ...styles.searchContainer, flex: "1" }}>
+          <input
+            type="text"
+            placeholder="Search by name or Device ID..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ ...styles.searchInput, width: "250px" }}
+          />
+        </div>
+        <div style={styles.dropdownContainer}>
+          <select
+            value={selectedDistrict}
+            onChange={(e) => setSelectedDistrict(e.target.value)}
+            style={styles.dropdown}
+          >
+            <option value="All">All Districts</option>
+            {districtsOfAssam.map((district) => (
+              <option key={district} value={district}>
+                {district}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button onClick={handleDownload} style={styles.downloadButton}>
+          Download Excel
+        </button>
       </div>
+
       <br />
       {filteredData.length > 0 ? (
         <div style={styles.tableContainer}>
@@ -577,30 +627,6 @@ const DeviceData = () => {
       ) : (
         <p>No data available to display.</p>
       )}
-      <div style={styles.pagination}>
-        <button
-          onClick={handlePrevious}
-          disabled={prevCursors.length === 0}
-          style={{
-            ...styles.paginationButton,
-            cursor: prevCursors.length === 0 ? "not-allowed" : "pointer",
-            opacity: prevCursors.length === 0 ? 0.6 : 1,
-          }}
-        >
-          Previous
-        </button>
-        <button
-          onClick={handleNext}
-          disabled={!nextCursor}
-          style={{
-            ...styles.paginationButton,
-            cursor: !nextCursor ? "not-allowed" : "pointer",
-            opacity: !nextCursor ? 0.6 : 1,
-          }}
-        >
-          Next
-        </button>
-      </div>
       <p>Powered by SCALEFUSION</p>
     </div>
   );
@@ -637,20 +663,22 @@ const styles = {
     fontSize: "1rem",
     marginLeft: "20px",
   },
+
   chartContainer: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "flex-start", // Align items at the top
+    alignItems: "flex-start",
     margin: "20px auto",
     width: "80%",
     gap: "40px",
+    flexWrap: "nowrap", // Add this line
   },
 
   pieChart: {
-    width: "30%",
+    // width: "30%",
   },
   summary: {
-    width: "40%",
+    // width: "40%",
     textAlign: "center",
     backgroundColor: "#fff",
     padding: "20px",
@@ -672,6 +700,16 @@ const styles = {
   //   borderCollapse: "collapse",
   //   marginTop: "20px",
   // },
+  tableContainer: {
+    width: "100%",
+    overflowX: "auto", // This will make the table horizontally scrollable
+    marginTop: "20px",
+  },
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+  },
+
   tableHeader: {
     backgroundColor: "#0096FF",
     color: "white",
@@ -717,15 +755,14 @@ const styles = {
   },
   header: { textAlign: "center", fontSize: "1.5rem" },
   dropdownContainer: { textAlign: "center", margin: "10px 20px" },
-  dropdown: { padding: "10px", fontSize: "1rem", borderRadius: "30px" , width:"10rem"},
+  dropdown: {
+    padding: "10px",
+    fontSize: "1rem",
+    borderRadius: "30px",
+    width: "10rem",
+  },
   table: { width: "100%", borderCollapse: "collapse" },
 
-  datePickerContainer: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: "20px",
-  },
   dateInput: {
     padding: "10px",
     margin: "0 10px",
@@ -743,7 +780,7 @@ const styles = {
     cursor: "pointer",
   },
   districtContainer: {
-    width: "40%",
+    // width: "40%",
     backgroundColor: "#fff",
     padding: "20px",
     borderRadius: "8px",

@@ -200,7 +200,7 @@ const fetchAndStoreActiveStatusData = async (fromDate, toDate) => {
     
 
     // Fetch all pages in parallel batches
-    const batchSize = 6; //Numnber of pages to fetch per page
+    const batchSize = 10; //Numnber of pages to fetch per page
     const pageBatches = [];
     for (let i = 1; i <= totalPages; i += batchSize) {
       const batch = Array.from({ length: Math.min(batchSize, totalPages - i + 1) }, (_, index) => i + index);
@@ -213,7 +213,7 @@ const fetchAndStoreActiveStatusData = async (fromDate, toDate) => {
 
       // Delay between batches to respect rate limits
       if (batch.length === batchSize) {
-        await new Promise((resolve) => setTimeout(resolve, 13000));
+        await new Promise((resolve) => setTimeout(resolve, 15000));
       }
     }
 
