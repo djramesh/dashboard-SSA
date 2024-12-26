@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "./navbar";
-import "./navbar.css";
 import "./App.css";
 import axios from "axios";
 import { Pie } from "react-chartjs-2";
@@ -31,66 +30,43 @@ const formatDateTime = (isoDate) => {
     "0"
   )}:${minutes}:${seconds}${amPm}`;
 };
-// const convertMinutesToDaysHoursMinutes = (minutes) => {
-//   if (minutes >= 1440) { // 1440 minutes = 1 day
-//     const days = Math.floor(minutes / 1440);
-//     const remainingMinutes = minutes % 1440;
-//     const hours = Math.floor(remainingMinutes / 60); //
-//     const finalMinutes = remainingMinutes % 60;
-
-//     let result = `${days} day${days > 1 ? 's' : ''}`;
-//     if (hours > 0 || finalMinutes > 0) {
-//       result += ` ${hours} hour${hours !== 1 ? 's' : ''}`;
-//     }
-//     if (finalMinutes > 0) {
-//       result += ` ${finalMinutes} minute${finalMinutes !== 1 ? 's' : ''}`;
-//     }
-
-//     return result;
-//   } else if (minutes >= 60) {
-//     const hours = Math.floor(minutes / 60);
-//     const remainingMinutes = minutes % 60;
-//     return `${hours} hour${hours !== 1 ? 's' : ''} ${remainingMinutes} minute${remainingMinutes !== 1 ? 's' : ''}`;
-//   } else {
-//     return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
-//   }
-// };
 
 const districtsOfAssam = [
   "BAJALI",
-  "BAKSA",
-  "BARPETA",
-  "BISWANATH",
-  "BONGAIGAON",
-  "CACHAR",
-  "CHARAIDEO",
-  "CHIRANG",
-  "DARRANG",
-  "DHEMAJI",
-  "DHUBRI",
-  "DIBRUGARH",
-  "DIMA HASAO",
-  "GOALPARA",
-  "GOLAGHAT",
-  "HAILAKANDI",
-  "HOJAI",
-  "JORHAT",
-  "KAMRUP",
-  "KAMRUP METROPOLITAN",
-  "KARBI ANGLONG",
-  "KARIMGANJ",
-  "KOKRAJHAR",
-  "LAKHIMPUR",
-  "MAJULI",
-  "MORIGAON",
-  "NAGAON",
-  "NALBARI",
-  "SIVASAGAR",
-  "SONITPUR",
-  "SOUTH SALMARA-MANKACHAR",
-  "TINSUKIA",
-  "UDALGURI",
-  "WEST KARBI ANGLONG",
+"BAKSA",
+"BARPETA",
+"BISWANATH",
+"BONGAIGAON",
+"CACHAR",
+"CHARAIDEO",
+"CHIRANG",
+"DARRANG",
+"DHEMAJI",
+"DHUBRI",
+"DIBRUGARH",
+"DIMA HASAO",
+"GOALPARA",
+"GOLAGHAT",
+"HAILAKANDI",
+"HOJAI",
+"JORHAT",
+"KAMRUP-METRO",
+"KAMRUP-RURAL",
+"KARBI ANGLONG",
+"KARIMGANJ",
+"KOKRAJHAR",
+"LAKHIMPUR",
+"MAJULI",
+"MORIGAON",
+"NAGAON",
+"NALBARI",
+"SIVASAGAR",
+"SONITPUR",
+"SOUTH SALMARA-MANKACHAR",
+"TAMULPUR",
+"TINSUKIA",
+"UDALGURI",
+"WEST KARBI ANGLONG",
 ];
 
 const DeviceData = () => {
@@ -113,6 +89,8 @@ const DeviceData = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [connectedCount, setConnectedCount] = useState(0);
   const [notConnectedCount, setNotConnectedCount] = useState(0);
+  const [connectionStatus, setConnectionStatus] = useState("All"); // State for connection filter
+  const [district, setDistrict] = useState("All");
 
   const handleFetchData = async () => {
     if (!startDate || !endDate) {
@@ -120,12 +98,12 @@ const DeviceData = () => {
       return;
     }
 
-    setLoading(true); // Show the loading indicator
+    setLoading(true);
 
     try {
       // Send request to backend with date range
       const response = await axios.get(
-        "https://dashboard-ssa-production.up.railway.app/api/fetchActiveStatusData",
+        "http://localhost:3001/api/fetchActiveStatusData",
         {
           params: { fromDate: startDate, toDate: endDate },
         }
@@ -149,9 +127,7 @@ const DeviceData = () => {
   const fetchData = async () => {
     setLoading(true); // Start loading
     try {
-      const response = await axios.get(
-        "https://dashboard-ssa-production.up.railway.app/api/devices"
-      );
+      const response = await axios.get("http://localhost:3001/api/devices");
       const devices = response.data.devices || [];
       setData(devices);
       setFilteredData(devices);
@@ -181,6 +157,7 @@ const DeviceData = () => {
     }
   }, [selectedDistrict, data]);
 
+  // useEffect(() => {
   //   if (filteredData.length > 0) {
   //     const updatedDistrictData = districtsOfAssam.map((district) => {
   //       const districtDevices = filteredData.filter((item) => item.district === district);
@@ -198,19 +175,50 @@ const DeviceData = () => {
   //   }
   // }, [filteredData]);
   const filterByConnectionStatus = (status) => {
+    const districtFilteredData =
+      selectedDistrict === "All"
+        ? data
+        : data.filter((item) => item.district === selectedDistrict);
+  
     if (status === "connected") {
       setFilteredData(
-        data.filter((item) => item.total_active_duration !== "0 sec")
+        districtFilteredData.filter(
+          (item) => item.total_active_duration !== "0 sec"
+        )
       );
     } else if (status === "notConnected") {
       setFilteredData(
-        data.filter((item) => item.total_active_duration === "0 sec")
+        districtFilteredData.filter(
+          (item) => item.total_active_duration === "0 sec"
+        )
       );
     } else {
-      setFilteredData(data); // Reset to show all data
+      setFilteredData(districtFilteredData); // Reset to show all district-filtered data
     }
   };
+  
+  // Update when connectionStatus or selectedDistrict changes
+  useEffect(() => {
+    filterByConnectionStatus(connectionStatus);
+  }, [connectionStatus, selectedDistrict, data]);
+  
+  const applyFilters = () => {
+    let filtered = data;
 
+    // Filter by district
+    if (district !== "All") {
+        filtered = filtered.filter((item) => item.district === district);
+    }
+
+    // Filter by connection status
+    if (connectionStatus === "connected") {
+        filtered = filtered.filter((item) => item.total_active_duration !== "0 sec");
+    } else if (connectionStatus === "notConnected") {
+        filtered = filtered.filter((item) => item.total_active_duration === "0 sec");
+    }
+
+    setFilteredData(filtered);
+}
   useEffect(() => {
     const calculateDistrictData = () => {
       const updatedDistrictData = districtsOfAssam.map((district) => {
@@ -240,27 +248,9 @@ const DeviceData = () => {
       calculateDistrictData();
     }, 30000);
 
-    return () => clearInterval(intervalId); // Cleanup interval on component unmount
+    return () => clearInterval(intervalId);
   }, [data]); // Run whenever `data` changes
 
-  // useEffect(() => {
-  //   const interval = setInterval(() => {
-  //     const connectedCount = filteredData.filter(
-  //       (item) => item.total_active_duration !== "0 sec"
-  //     ).length;
-  //     const notConnectedCount = filteredData.filter(
-  //       (item) => item.total_active_duration === "0 sec"
-  //     ).length;
-
-  //     setConnectedCount(connectedCount);
-  //     setNotConnectedCount(notConnectedCount);
-  //   }, 3 * 1000);
-
-  //   // Cleanup interval on component unmount
-  //   return () => clearInterval(interval);
-  // }, [filteredData]);
-
-  // Local filtering of the data based on the search term
   // Function to update counts
   const updateCounts = () => {
     const connectedCount = data.filter(
@@ -280,6 +270,7 @@ const DeviceData = () => {
 
     return () => clearInterval(interval);
   }, [data]);
+
   useEffect(() => {
     if (!searchTerm.trim()) {
       setFilteredData(data); // Reset to all data if no search term
@@ -389,11 +380,10 @@ const DeviceData = () => {
                 ? `${new Date(startDate).toLocaleDateString(
                     "en-GB"
                   )} to ${new Date(endDate).toLocaleDateString("en-GB")}`
-                : `${new Date().toLocaleDateString(
-                    "en-GB"
-                  )} to ${new Date().toLocaleDateString("en-GB")}`}
+                : "Please select a date range."}
             </span>
           </h4>
+
           <p
             style={styles.activeCount}
             onClick={() => {
@@ -437,65 +427,18 @@ const DeviceData = () => {
                 </p>
                 <p style={styles.activeCount}>Connected: {item.connected} </p>
                 <p style={styles.inactiveCount}>
-                 Not Connected: {item.notConnected}{" "}
+                  Not Connected: {item.notConnected}{" "}
                 </p>
               </div>
             ))}
           </div>
         </div>
       </div>
-      {/* <div style={{ display: "flex", alignItems: "center" }}>
-        <div style={styles.datePickerContainer}>
-          <p>From :</p>{" "}
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            style={styles.dateInput}
-          />
-          <p> To : </p>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            style={styles.dateInput}
-          />
-          <button onClick={handleFetchData} style={styles.fetchButton}>
-            Fetch Data
-          </button>
-        </div>
-        <div style={{ ...styles.searchContainer, flex: "1" }}>
-          <input
-            type="text"
-            placeholder="Search by name or Device ID..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ ...styles.searchInput, width: "250px" }}
-          />
-        </div>
-        <div style={styles.dropdownContainer}>
-          <select
-            value={selectedDistrict}
-            onChange={(e) => setSelectedDistrict(e.target.value)}
-            style={styles.dropdown}
-          >
-            <option value="All">All Districts</option>
-            {districtsOfAssam.map((district) => (
-              <option key={district} value={district}>
-                {district}
-              </option>
-            ))}
-          </select>
-        </div>
-        <button onClick={handleDownload} style={styles.downloadButton}>
-          Download Excel
-        </button>
-      </div> */}
-      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap" }}>
+      <div className="container" style={{ display: "flex", alignItems: "center"}}>
         <div className="datePickerContainer">
           <p>From :</p>{" "}
           <input
-            type="date" /*  */
+            type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
             style={styles.dateInput}
@@ -507,6 +450,7 @@ const DeviceData = () => {
             onChange={(e) => setEndDate(e.target.value)}
             style={styles.dateInput}
           />
+          <br />
           <button onClick={handleFetchData} style={styles.fetchButton}>
             Fetch Data
           </button>
@@ -533,12 +477,22 @@ const DeviceData = () => {
               </option>
             ))}
           </select>
+        </div>
+        <div style={styles.dropdownContainer}>
+            <select
+                value={connectionStatus}
+                onChange={(e) => setConnectionStatus(e.target.value)}
+                style={styles.dropdown}
+            >
+                <option value="All">Select Status</option>
+                <option value="connected">Connected</option>
+                <option value="notConnected">Not Connected</option>
+            </select>
         </div>
         <button onClick={handleDownload} style={styles.downloadButton}>
           Download Excel
         </button>
       </div>
-
       <br />
       {filteredData.length > 0 ? (
         <div style={styles.tableContainer}>
@@ -627,7 +581,7 @@ const DeviceData = () => {
       ) : (
         <p>No data available to display.</p>
       )}
-      <p>Powered by SCALEFUSION</p>
+      
     </div>
   );
 };
@@ -649,7 +603,7 @@ const styles = {
   searchInput: {
     padding: "12px",
     fontSize: "1rem",
-    width: "50%",
+    // width: "50%",
     borderRadius: "50px",
     border: "1px solid #ccc",
   },
@@ -663,20 +617,19 @@ const styles = {
     fontSize: "1rem",
     marginLeft: "20px",
   },
-
   chartContainer: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "flex-start", // Align items at the top
     margin: "20px auto",
     width: "80%",
     gap: "40px",
-    flexWrap: "nowrap", // Add this line
+    flexWrap: "nowrap",
   },
 
-  pieChart: {
-    // width: "30%",
-  },
+  // pieChart: {
+  //   width: "30%",
+  // },
   summary: {
     // width: "40%",
     textAlign: "center",
@@ -695,21 +648,6 @@ const styles = {
 
     cursor: "pointer",
   },
-  // table: {
-  //   width: "100%",
-  //   borderCollapse: "collapse",
-  //   marginTop: "20px",
-  // },
-  tableContainer: {
-    width: "100%",
-    overflowX: "auto", // This will make the table horizontally scrollable
-    marginTop: "20px",
-  },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
-
   tableHeader: {
     backgroundColor: "#0096FF",
     color: "white",
@@ -763,6 +701,17 @@ const styles = {
   },
   table: { width: "100%", borderCollapse: "collapse" },
 
+    tableContainer: {
+    width: "100%",
+    overflowX: "auto",
+    marginTop: "20px",
+  },
+  // datePickerContainer: {
+  //   display: "flex",
+  //   justifyContent: "center",
+  //   alignItems: "center",
+  //   marginTop: "20px",
+  // },
   dateInput: {
     padding: "10px",
     margin: "0 10px",
