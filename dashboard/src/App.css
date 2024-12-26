@@ -14,12 +14,18 @@ html {
   scroll-behavior: smooth; /* Ensures smoother scrolling for all elements */
 }
 
+.container{
+  gap: 10px;
+  display: flex;
+  justify-content: center;
+}
+
 .datePickerContainer {
-  display: "flex";
-  /* flex-direction: column; */
-  justify-content: "center";
-  align-items: "center";
-  margin-top: "20px";
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
 }
 
 @media (max-width: 768px) {
@@ -34,6 +40,7 @@ html {
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    gap: 10px;
   }
 
   .pieChart {
