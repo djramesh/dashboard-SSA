@@ -102,7 +102,7 @@ const DeviceData = () => {
     try {
       // Send request to backend with date range
       const response = await axios.get(
-        "https://dashboard-ssa-production.up.railway.app/api/fetchActiveStatusData",
+        "https://dashboard-ssa-production-c05c.up.railway.app/api/fetchActiveStatusData",
         {
           params: { fromDate: startDate, toDate: endDate },
         }
@@ -126,7 +126,7 @@ const DeviceData = () => {
   const fetchData = async () => {
     setLoading(true); // Start loading
     try {
-      const response = await axios.get("https://dashboard-ssa-production.up.railway.app/api/devices");
+      const response = await axios.get("https://dashboard-ssa-production-c05c.up.railway.app/api/devices");
       const devices = response.data.devices || [];
       setData(devices);
       setFilteredData(devices);
