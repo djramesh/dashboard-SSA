@@ -29,7 +29,8 @@ app.use(cors(corsOptions));
 //   connectTimeout: 10000,
 // };
 
-const urlDB = "mysql://root:ZXXpbahTXoxLeVYxeGIMpdjdruSZqRqv@mysql.railway.internal:3306/railway"
+// const urlDB = "mysql://root:ZXXpbahTXoxLeVYxeGIMpdjdruSZqRqv@mysql.railway.internal:3306/railway"
+const urlDB="mysql://root:BoQtUauaoujPvogXulQCfohZxaoGuutH@mysql.railway.internal:3306/railway"
 
 //changes here
 // Initialize database and create table if not exists
