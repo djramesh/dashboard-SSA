@@ -322,11 +322,15 @@ const DeviceData = () => {
 
   // Download filtered data as Excel
   const handleDownload = () => {
-    const ws = XLSX.utils.json_to_sheet(filteredData);
+    // Remove 'hm_contact_number' from each object in filteredData
+    const sanitizedData = filteredData.map(({ hm_contact_number, ...rest }) => rest);
+  
+    const ws = XLSX.utils.json_to_sheet(sanitizedData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Devices");
     XLSX.writeFile(wb, "devices_data.xlsx");
   };
+  
   if (loading) {
     return (
       <div className="loader" style={styles.loader}>
