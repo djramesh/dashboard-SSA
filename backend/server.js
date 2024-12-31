@@ -99,9 +99,9 @@ const fetchAndStoreData = async () => {
          last_seen_on = VALUES(last_seen_on),
          connection_state = VALUES(connection_state),
          connection_status = VALUES(connection_status),
-         device_status = VALUES(device_status)
+         device_status = VALUES(device_status),
          hm_name = VALUES(hm_name),
-        hm_contact_number = VALUES(hm_contact_number)
+         hm_contact_number = VALUES(hm_contact_number)
         `,
         [devices]
       );
