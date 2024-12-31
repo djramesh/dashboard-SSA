@@ -514,6 +514,8 @@ const DeviceData = () => {
                   "Device Status",
                   "Active Dates",
                   "Total Active Duration",
+                  "HM Name",
+                  "HM Contact No.",
                   // New column
                   // "Inactive Duration",    // New column
                   // "Avg Active Duration", // New column
@@ -572,7 +574,8 @@ const DeviceData = () => {
                     <td style={styles.tableData}>
                       {item.total_active_duration}
                     </td>
-                    {/* <td style={styles.tableData}>{convertMinutesToDaysHoursMinutes(item.idle_duration)}</td>  */}
+                    <td style={styles.tableData}>{item.hm_name}</td>
+                    <td style={styles.tableData}>{item.hm_contact_number}</td>
                   </tr>
                 );
               })}

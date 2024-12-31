@@ -46,7 +46,9 @@ const initializeDatabase = async () => {
       last_seen_on DATETIME,
       connection_state VARCHAR(50),
       connection_status VARCHAR(50),
-      device_status VARCHAR(50)
+      device_status VARCHAR(50),
+      hm_name VARCHAR(255),
+      hm_contact_number VARCHAR(15),
     )
   `);
   await connection.end();
@@ -80,11 +82,13 @@ const fetchAndStoreData = async () => {
         device.device.connection_state || "N/A",
         device.device.connection_status || "N/A",
         device.device.device_status || "N/A",
+        device.device.custom_properties.find((prop) => prop.name === "HM Name")?.value || "N/A",
+        device.device.custom_properties.find((prop) => prop.name === "HM Contact Number")?.value || "N/A",
       ]);
 
       // Insert data into MySQL
       await connection.query(
-        `INSERT INTO devices (id, name, district, block, power_on_time, power_off_time, last_seen_on, connection_state, connection_status, device_status)
+        `INSERT INTO devices (id, name, district, block, power_on_time, power_off_time, last_seen_on, connection_state, connection_status, device_status, hm_name, hm_contact_number)
          VALUES ?
          ON DUPLICATE KEY UPDATE 
          name = VALUES(name),
@@ -96,6 +100,8 @@ const fetchAndStoreData = async () => {
          connection_state = VALUES(connection_state),
          connection_status = VALUES(connection_status),
          device_status = VALUES(device_status)
+         hm_name = VALUES(hm_name),
+        hm_contact_number = VALUES(hm_contact_number)
         `,
         [devices]
       );
