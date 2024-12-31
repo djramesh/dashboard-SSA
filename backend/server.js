@@ -78,7 +78,7 @@ const fetchAndStoreData = async () => {
         device.device.custom_properties.find((prop) => prop.name === "Block")?.value || "N/A",
         device.device.power_on_time || null,
         device.device.power_off_time || null,
-        device.device.last_seen_on || null,
+        device.device.last_seen_on ? new Date(device.device.last_seen_on).toLocaleDateString('en-GB') : null,
         device.device.connection_state || "N/A",
         device.device.connection_status || "N/A",
         device.device.device_status || "N/A",
