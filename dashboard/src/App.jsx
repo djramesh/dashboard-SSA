@@ -512,7 +512,7 @@ const DeviceData = () => {
                   "Block",
                   // "Power On Time",
                   // "Power Off Time",
-                  "Last Seen On",
+                  // "Last Seen On",
                   "Live Connection State",
                   "Connection Status",
                   "Device Status",
@@ -707,13 +707,20 @@ const styles = {
     borderRadius: "30px",
     width: "10rem",
   },
-  table: { width: "100%", borderCollapse: "collapse" },
-
-    tableContainer: {
-    width: "100%",
-    overflowX: "auto",
+  tableContainer: {
+    // width: "100%",
+    // maxWidth: "100%", // Ensure it fits the viewport
+    overflowX: "auto", // Enable horizontal scrolling
     marginTop: "20px",
-  },
+    position: "relative", // Keep it positioned relative to its container
+    paddingBottom: "10px", // Space for scrollbar inside the container
+},
+table: {
+    minWidth: "1000px", // Wider than the container to enable scroll
+    borderCollapse: "collapse",
+},
+
+
   // datePickerContainer: {
   //   display: "flex",
   //   justifyContent: "center",
