@@ -575,7 +575,7 @@ const DeviceData = () => {
                       {item.total_active_duration}
                     </td>
                     <td style={styles.tableData}>{item.hm_name}</td>
-                    <td style={styles.tableData}>{item.hm_contact_number}</td>
+                    <td style={styles.tableData}>{item.hm_contact_numbers}</td>
                   </tr>
                 );
               })}
