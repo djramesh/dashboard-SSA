@@ -74,8 +74,8 @@ const fetchAndStoreData = async () => {
       const devices = response.data.devices.map((device) => [
         device.device.id,
         device.device.name,
-        device.device.custom_properties.find((prop) => prop.name === "District")?.value || "N/A",
-        device.device.custom_properties.find((prop) => prop.name === "Block")?.value || "N/A",
+        // device.device.custom_properties.find((prop) => prop.name === "District")?.value || "N/A",
+        // device.device.custom_properties.find((prop) => prop.name === "Block")?.value || "N/A",
         device.device.power_on_time || null,
         device.device.power_off_time || null,
         device.device.last_seen_on || null,
@@ -224,7 +224,7 @@ const fetchAndStoreActiveStatusData = async (fromDate, toDate) => {
     }
 
     // Get all device IDs from the database
-    const [existingDevices] = await connection.query("SELECT id FROM devices");
+    const [existingDevices] = await connection.query("SELECT id FROM devices_db");
     const existingDeviceIds = new Set(existingDevices.map((row) => row.id));
 
     // Prepare data for active devices
@@ -262,7 +262,7 @@ const fetchAndStoreActiveStatusData = async (fromDate, toDate) => {
       console.log("Updating inactive devices in DB...");
       await connection.query(
         `
-        INSERT INTO devices (id, active_dates, total_active_duration)
+        INSERT INTO devices_db (id, active_dates, total_active_duration)
         VALUES ?
         ON DUPLICATE KEY UPDATE
           active_dates = VALUES(active_dates),
@@ -365,7 +365,7 @@ app.get('/api/devices', async (req, res) => {
   try {
     const connection = await mysql.createConnection(urlDB);
 
-    let query = `SELECT * FROM devices WHERE 1=1`;
+    let query = `SELECT * FROM devices_db WHERE 1=1`;
     const params = [];
 
     if (searchTerm.trim()) {
@@ -379,12 +379,12 @@ app.get('/api/devices', async (req, res) => {
     const [devices] = await connection.query(query, params);
 
     const [totalDevicesResult] = await connection.query(
-      `SELECT COUNT(*) AS totalDevices FROM devices`
+      `SELECT COUNT(*) AS totalDevices FROM devices_db`
     );
     const totalDevices = totalDevicesResult[0].totalDevices;
 
     const [activeCountResult] = await connection.query(
-      `SELECT COUNT(*) AS activeDevices FROM devices WHERE connection_state = 'Active'`
+      `SELECT COUNT(*) AS activeDevices FROM devices_db WHERE connection_state = 'Active'`
     );
     const activeDevices = activeCountResult[0].activeDevices;
 
@@ -431,7 +431,7 @@ app.get('/api/device-stats', async (req, res) => {
          COUNT(*) AS total,
          SUM(connection_state = 'Active') AS active,
          SUM(connection_state = 'Inactive') AS inactive
-       FROM devices`
+       FROM devices_db`
     );
 
     res.json(stats);
