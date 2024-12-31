@@ -48,7 +48,7 @@ const initializeDatabase = async () => {
       connection_status VARCHAR(50),
       device_status VARCHAR(50),
       hm_name VARCHAR(255),
-      hm_contact_number VARCHAR(15)
+      hm_contact_numbers VARCHAR(30)
     )
   `);
   await connection.end();
@@ -88,7 +88,7 @@ const fetchAndStoreData = async () => {
 
       // Insert data into MySQL
       await connection.query(
-        `INSERT INTO devices (id, name, district, block, power_on_time, power_off_time, last_seen_on, connection_state, connection_status, device_status, hm_name, hm_contact_number)
+        `INSERT INTO devices (id, name, district, block, power_on_time, power_off_time, last_seen_on, connection_state, connection_status, device_status, hm_name, hm_contact_numbers)
          VALUES ?
          ON DUPLICATE KEY UPDATE 
          name = VALUES(name),
@@ -101,7 +101,7 @@ const fetchAndStoreData = async () => {
          connection_status = VALUES(connection_status),
          device_status = VALUES(device_status),
          hm_name = VALUES(hm_name),
-         hm_contact_number = VALUES(hm_contact_number)
+         hm_contact_numbers = VALUES(hm_contact_numbers)
         `,
         [devices]
       );
