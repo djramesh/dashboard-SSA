@@ -36,7 +36,7 @@ const urlDB = "mysql://root:ZXXpbahTXoxLeVYxeGIMpdjdruSZqRqv@mysql.railway.inter
 const initializeDatabase = async () => {
   const connection = await mysql.createConnection(urlDB);
   await connection.execute(`
-    CREATE TABLE IF NOT EXISTS devices (
+    CREATE TABLE IF NOT EXISTS devices_db (
       id INT PRIMARY KEY,
       name VARCHAR(255),
       district VARCHAR(255),
@@ -247,7 +247,7 @@ const fetchAndStoreActiveStatusData = async (fromDate, toDate) => {
       console.log("Updating active devices in DB...");
       await connection.query(
         `
-        INSERT INTO devices (id, active_dates, total_active_duration)
+        INSERT INTO devices_db (id, active_dates, total_active_duration)
         VALUES ?
         ON DUPLICATE KEY UPDATE
           active_dates = VALUES(active_dates),

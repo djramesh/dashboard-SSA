@@ -512,7 +512,7 @@ const DeviceData = () => {
                   "Block",
                   // "Power On Time",
                   // "Power Off Time",
-                  "Last Seen On",
+                  // "Last Seen On",
                   "Live Connection State",
                   "Connection Status",
                   "Device Status",
@@ -557,7 +557,7 @@ const DeviceData = () => {
                     {/* <td style={styles.tableData}>{formatDateTime(item.power_on_time)}</td>
         <td style={styles.tableData}>{formatDateTime(item.power_off_time)}</td> */}
                     <td style={styles.tableData}>
-                      {item.last_seen_on}
+                      {formatDateTime(item.last_seen_on)}
                     </td>
                     <td style={styles.tableData}>
                       <span
