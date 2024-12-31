@@ -48,7 +48,7 @@ const initializeDatabase = async () => {
       connection_status VARCHAR(50),
       device_status VARCHAR(50),
       hm_name VARCHAR(255),
-      hm_contact_number VARCHAR(15),
+      hm_contact_number INT(30),
     )
   `);
   await connection.end();
