@@ -74,8 +74,8 @@ const fetchAndStoreData = async () => {
       const devices = response.data.devices.map((device) => [
         device.device.id,
         device.device.name,
-        // device.device.custom_properties.find((prop) => prop.name === "District")?.value || "N/A",
-        // device.device.custom_properties.find((prop) => prop.name === "Block")?.value || "N/A",
+        device.device.custom_properties.find((prop) => prop.name === "District")?.value || "N/A",
+        device.device.custom_properties.find((prop) => prop.name === "Block")?.value || "N/A",
         device.device.power_on_time || null,
         device.device.power_off_time || null,
         device.device.last_seen_on || null,

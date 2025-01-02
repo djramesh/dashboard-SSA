@@ -173,6 +173,7 @@ const DeviceData = () => {
   //     setDistrictData(updatedDistrictData);
   //   }
   // }, [filteredData]);
+  
   const filterByConnectionStatus = (status) => {
     const districtFilteredData =
       selectedDistrict === "All"
@@ -327,7 +328,7 @@ const DeviceData = () => {
   
     const ws = XLSX.utils.json_to_sheet(sanitizedData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Devices");
+    XLSX.utils.book_append_sheet(wb, ws, "Devices_db");
     XLSX.writeFile(wb, "devices_data.xlsx");
   };
   
@@ -512,7 +513,7 @@ const DeviceData = () => {
                   "Block",
                   // "Power On Time",
                   // "Power Off Time",
-                  // "Last Seen On",
+                  "Last Seen On",
                   "Live Connection State",
                   "Connection Status",
                   "Device Status",
@@ -709,14 +710,14 @@ const styles = {
   },
   tableContainer: {
     // width: "100%",
-    // maxWidth: "100%", // Ensure it fits the viewport
-    overflowX: "auto", // Enable horizontal scrolling
+    // maxWidth: "100%",
+    overflowX: "auto",
     marginTop: "20px",
-    position: "relative", // Keep it positioned relative to its container
-    paddingBottom: "10px", // Space for scrollbar inside the container
+    position: "relative",
+    paddingBottom: "10px",
 },
 table: {
-    minWidth: "1000px", // Wider than the container to enable scroll
+    minWidth: "1000px",
     borderCollapse: "collapse",
 },
 
