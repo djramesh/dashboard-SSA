@@ -515,8 +515,8 @@ const DeviceData = () => {
                   // "Power Off Time",
                   "Last Seen On",
                   "Live Connection State",
-                  "Connection Status",
-                  "Device Status",
+                  // "Connection Status",
+                  // "Device Status",
                   "Active Dates",
                   "Total Active Duration",
                   "HM Name",
@@ -572,13 +572,10 @@ const DeviceData = () => {
                       ></span>
                       {item.connection_state}
                     </td>
-                    <td style={styles.tableData}>{item.connection_status}</td>
-                    <td style={styles.tableData}>{item.device_status}</td>
-                    {/* New columns */}
+                    {/* <td style={styles.tableData}>{item.connection_status}</td>
+                    <td style={styles.tableData}>{item.device_status}</td> */}
                     <td style={styles.tableData}>{item.active_dates}</td>
-                    <td style={styles.tableData}>
-                      {item.total_active_duration}
-                    </td>
+                    <td style={styles.tableData}>{item.total_active_duration}</td>
                     <td style={styles.tableData}>{item.hm_name}</td>
                     <td style={styles.tableData}>{item.hm_contact_numbers}</td>
                   </tr>
@@ -661,12 +658,12 @@ const styles = {
     backgroundColor: "#0096FF",
     color: "white",
     padding: "10px",
-    textAlign: "left",
+    textAlign: "center",
   },
   tableData: {
-    padding: "10px",
-    borderBottom: "1px solid #ddd",
-    textAlign: "left",
+    padding:"10px",
+    borderBottom: "1px dotted #ddd",
+    textAlign: "center",
   },
   evenRow: {
     backgroundColor: "#f2f2f2",
@@ -774,8 +771,8 @@ table: {
     top: "50%",
     left: "50%",
     transform: "translate(-50%, -50%)",
-    width: "150px", // Adjust the size as per your need
-    height: "150px", // Adjust the size as per your need
+    width: "150px",
+    height: "150px"
   },
 };
 
