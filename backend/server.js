@@ -188,6 +188,7 @@ const fetchAndStoreActiveStatusData = async (fromDate, toDate) => {
               } else {
                 deviceData.totalDuration += device.duration_in_seconds;
               }
+              deviceData.activeDates.add(date);
             }
           });
     
