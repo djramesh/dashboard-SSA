@@ -176,15 +176,18 @@ const fetchAndStoreActiveStatusData = async (fromDate, toDate) => {
             allDeviceIds.add(deviceId);
     
             if (device.availability_status === "active") {
-              const date = device.from_date.split(" ")[0]; // Extract the date part
+              const date = device.from_date.split(" ")[0];
     
               if (!activeDataMap.has(deviceId)) {
                 activeDataMap.set(deviceId, { totalDuration: 0, activeDates: new Set() });
               }
     
               const deviceData = activeDataMap.get(deviceId);
-              deviceData.totalDuration += device.duration_in_seconds;
-              deviceData.activeDates.add(date);
+              if (device.duration_in_seconds === 0) {
+                deviceData.totalDuration += 1; // Set a minimal duration to indicate activity
+              } else {
+                deviceData.totalDuration += device.duration_in_seconds;
+              }
             }
           });
     
@@ -321,6 +324,10 @@ app.get("/api/fetchActiveStatusData", async (req, res) => {
 
 
 const convertToHumanReadable = (seconds) => {
+  if (seconds <= 60) {
+    return "less than 1 min";
+  }
+
   const days = Math.floor(seconds / (24 * 60 * 60));
   seconds %= 24 * 60 * 60;
 
