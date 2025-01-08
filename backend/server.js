@@ -18,17 +18,6 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-
-// MySQL Database connection
-// const dbConfig = {
-//   host: process.env.DB_HOST,
-//   user: process.env.DB_USER,
-//   password: process.env.DB_PASSWORD,
-//   database: process.env.DB_NAME,
-//   port: process.env.DB_PORT,
-//   connectTimeout: 10000,
-// };
-
 const urlDB = "mysql://root:ZXXpbahTXoxLeVYxeGIMpdjdruSZqRqv@mysql.railway.internal:3306/railway"
 
 //changes here
@@ -326,7 +315,7 @@ app.get("/api/fetchActiveStatusData", async (req, res) => {
 
 const convertToHumanReadable = (seconds) => {
   if (seconds <= 60) {
-    return "less than 1 min";
+    return "Less than 1 min";
   }
 
   const days = Math.floor(seconds / (24 * 60 * 60));
