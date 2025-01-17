@@ -7,7 +7,7 @@ body {
 }
 
 html {
-  scroll-behavior: smooth; /* This makes the entire document smooth-scroll */
+  scroll-behavior: smooth;
 }
 
 * {
