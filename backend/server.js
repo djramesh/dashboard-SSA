@@ -9,7 +9,7 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3001
 const cache = new NodeCache({ stdTTL: 30 });
-const SCALEFUSION_API_KEY = REACT_APP_API_KEY;
+const SCALEFUSION_API_KEY = process.env.REACT_APP_API_KEY;
 
 // Enable CORS
 const corsOptions = {

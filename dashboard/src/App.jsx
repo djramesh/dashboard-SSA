@@ -654,6 +654,10 @@ const styles = {
 
     cursor: "pointer",
   },
+  table:{
+    maxHeight: "800px"
+  },
+
   tableHeader: {
     backgroundColor: "#0096FF",
     color: "white",
