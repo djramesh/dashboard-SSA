@@ -95,7 +95,7 @@ const fetchAndStoreData = async () => {
         [devices]
       );
 
-      nextCursor = response.data.next_cursor;
+      nextCursor = response.data.next_page;
     } while (nextCursor);
 
     await connection.end();
