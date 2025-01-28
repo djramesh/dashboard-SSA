@@ -657,7 +657,7 @@ const styles = {
   tableHeader: {
     backgroundColor: "#0096FF",
     color: "white",
-    padding: "10px",
+    padding: "15px 80px",
     textAlign: "center",
   },
   tableData: {

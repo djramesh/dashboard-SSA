@@ -9,7 +9,7 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3001
 const cache = new NodeCache({ stdTTL: 30 });
-const SCALEFUSION_API_KEY = '0f708bc142624a1ba8209359cb65d5b7';
+const SCALEFUSION_API_KEY = REACT_APP_API_KEY;
 
 // Enable CORS
 const corsOptions = {
@@ -199,7 +199,7 @@ const fetchAndStoreActiveStatusData = async (fromDate, toDate) => {
     
 
     // Fetch all pages in parallel batches
-    const batchSize = 15; //Numnber of pages to fetch per page
+    const batchSize = 20; //Numnber of pages to fetch per page
     const pageBatches = [];
     for (let i = 1; i <= totalPages; i += batchSize) {
       const batch = Array.from({ length: Math.min(batchSize, totalPages - i + 1) }, (_, index) => i + index);
@@ -212,7 +212,7 @@ const fetchAndStoreActiveStatusData = async (fromDate, toDate) => {
 
       // Delay between batches to respect rate limits
       if (batch.length === batchSize) {
-        await new Promise((resolve) => setTimeout(resolve, 8000));
+        await new Promise((resolve) => setTimeout(resolve, 5000));
       }
     }
 
