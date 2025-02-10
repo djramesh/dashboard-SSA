@@ -318,8 +318,8 @@ const convertToHumanReadable = (seconds) => {
     return "Less than 1 min";
   }
 
-  const days = Math.floor(seconds / (24 * 60 * 60));
-  seconds %= 24 * 60 * 60;
+  // const days = Math.floor(seconds / (24 * 60 * 60));
+  // seconds %= 24 * 60 * 60;
 
   const hours = Math.floor(seconds / (60 * 60));
   seconds %= 60 * 60;
@@ -328,7 +328,7 @@ const convertToHumanReadable = (seconds) => {
   seconds %= 60;
 
   let result = "";
-  if (days > 0) result += `${days} day${days > 1 ? "s" : ""} `;
+  // if (days > 0) result += `${days} day${days > 1 ? "s" : ""} `;
   if (hours > 0) result += `${hours} hr${hours > 1 ? "s" : ""} `;
   if (minutes > 0) result += `${minutes} min${minutes > 1 ? "s" : ""} `;
   if (seconds > 0) result += `${seconds} sec${seconds > 1 ? "s" : ""}`;

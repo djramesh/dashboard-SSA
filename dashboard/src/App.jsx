@@ -503,7 +503,7 @@ const DeviceData = () => {
       {filteredData.length > 0 ? (
         <div style={styles.tableContainer}>
           <table style={styles.table}>
-            <thead>
+            <thead style={styles.tableHeader}>
               <tr>
                 {[
                   "S.No",
