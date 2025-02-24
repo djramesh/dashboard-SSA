@@ -314,21 +314,14 @@ app.get("/api/fetchActiveStatusData", async (req, res) => {
 
 
 const convertToHumanReadable = (seconds) => {
-  if (seconds <= 60) {
-    return "Less than 1 min";
-  }
-
   const hours = Math.floor(seconds / (60 * 60));
   seconds %= 60 * 60;
 
   const minutes = Math.floor(seconds / 60);
   seconds %= 60;
 
-  let result = "";
-  if (hours > 0) result += `${hours} hr `;
-  if (minutes > 0) result += `${minutes} min `;
-  if (seconds > 0) result += `${seconds} sec`;
-
+  let result = `${hours} hr ${minutes} min ${seconds} sec`;
+  
   return result.trim();
 };
 
