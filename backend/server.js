@@ -314,14 +314,21 @@ app.get("/api/fetchActiveStatusData", async (req, res) => {
 
 
 const convertToHumanReadable = (seconds) => {
+  const days = Math.floor(seconds / (24 * 60 * 60));
+  seconds %= 24 * 60 * 60;
+
   const hours = Math.floor(seconds / (60 * 60));
   seconds %= 60 * 60;
 
   const minutes = Math.floor(seconds / 60);
   seconds %= 60;
 
-  let result = `${hours} hr ${minutes} min ${seconds} sec`;
-  
+  let result = "";
+  if (days > 0) result += `${days} day${days > 1 ? "s" : ""} `;
+  if (hours > 0) result += `${hours} hr${hours > 1 ? "s" : ""} `;
+  if (minutes > 0) result += `${minutes} min${minutes > 1 ? "s" : ""} `;
+  if (seconds > 0) result += `${seconds} sec${seconds > 1 ? "s" : ""}`;
+
   return result.trim();
 };
 
