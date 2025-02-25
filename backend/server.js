@@ -168,7 +168,7 @@ const fetchAndStoreActiveStatusData = async (fromDate, toDate) => {
               const date = device.from_date.split(" ")[0];
     
               // Log device_id and duration_in_seconds for active devices
-              console.log(`Device ID: ${deviceId}, Duration in Seconds: ${device.duration_in_seconds}`);
+              // console.log(`Device ID: ${deviceId}, Duration in Seconds: ${device.duration_in_seconds}`);
     
               if (!activeDataMap.has(deviceId)) {
                 activeDataMap.set(deviceId, { totalDuration: 0, activeDates: new Set() });

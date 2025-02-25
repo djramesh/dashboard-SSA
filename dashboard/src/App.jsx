@@ -90,6 +90,7 @@ const DeviceData = () => {
   const [notConnectedCount, setNotConnectedCount] = useState(0);
   const [connectionStatus, setConnectionStatus] = useState("All"); // State for connection filter
   const [district, setDistrict] = useState("All");
+  const [loadingPercentage, setLoadingPercentage] = useState(0); // New state for loading percentage
 
   const handleFetchData = async () => {
     if (!startDate || !endDate) {
@@ -98,8 +99,14 @@ const DeviceData = () => {
     }
 
     setLoading(true);
+    setLoadingPercentage(0); // Reset loading percentage
 
     try {
+      // Simulate loading percentage increment
+      const interval = setInterval(() => {
+        setLoadingPercentage((prev) => Math.min(prev + 10, 100)); // Increment by 10% until 100%
+      }, 1000); // Update every second
+
       // Send request to backend with date range
       const response = await axios.get(
         "https://dashboard-ssa-production.up.railway.app/api/fetchActiveStatusData",
@@ -119,7 +126,9 @@ const DeviceData = () => {
       console.error("Error fetching screen time data:", error);
       alert("Error fetching data");
     } finally {
+      clearInterval(interval); // Clear the interval
       setLoading(false);
+      setLoadingPercentage(100); // Set to 100% when done
     }
   };
 
@@ -193,11 +202,10 @@ const DeviceData = () => {
         )
       );
     } else {
-      setFilteredData(districtFilteredData); // Reset to show all district-filtered data
+      setFilteredData(districtFilteredData);
     }
   };
-  
-  // Update when connectionStatus or selectedDistrict changes
+
   useEffect(() => {
     filterByConnectionStatus(connectionStatus);
   }, [connectionStatus, selectedDistrict, data]);
@@ -340,6 +348,7 @@ const DeviceData = () => {
           alt="Loading..."
           style={{ width: "130px", height: "130px" }}
         />
+        <p>Loading... {loadingPercentage}%</p>
       </div>
     );
   }
