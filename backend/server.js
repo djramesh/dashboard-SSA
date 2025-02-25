@@ -178,7 +178,9 @@ const fetchAndStoreActiveStatusData = async (fromDate, toDate) => {
               if (device.duration_in_seconds === 0) {
                 deviceData.totalDuration += 1; // Set a minimal duration to indicate activity
               } else {
-                deviceData.totalDuration += device.duration_in_seconds;
+                if (device.duration_in_seconds <= 99999) {
+                    deviceData.totalDuration += device.duration_in_seconds;
+                }
               }
               deviceData.activeDates.add(date);
             }
