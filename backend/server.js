@@ -6,13 +6,13 @@ const NodeCache = require("node-cache");
 require("dotenv").config();
 
 const app = express();
-const PORT = 3006;
+const PORT = process.env.PORT || 3001;
 const cache = new NodeCache({ stdTTL: 30 });
 const SCALEFUSION_API_KEY = process.env.REACT_APP_API_KEY;
 
 app.use(cors({ origin: "*", optionsSuccessStatus: 200 }));
 
-const urlDB = "mysql://root:ZXXpbahTXoxLeVYxeGIMpdjdruSZqRqv@mysql.railway.internal:3306/railway"
+const urlDB = process.env.DB_URL;
 
 let fetchProgress = {
   completedPages: 0,
