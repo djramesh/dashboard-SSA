@@ -10,7 +10,11 @@ const PORT = 3006;
 const cache = new NodeCache({ stdTTL: 30 });
 const SCALEFUSION_API_KEY = process.env.REACT_APP_API_KEY;
 
-app.use(cors({ origin: "*", optionsSuccessStatus: 200 }));
+const corsOptions = {
+  origin: '*',
+  optionsSuccessStatus: 200,
+};
+app.use(cors(corsOptions));
 
 const urlDB = "mysql://root:ZXXpbahTXoxLeVYxeGIMpdjdruSZqRqv@mysql.railway.internal:3306/railway"
 
