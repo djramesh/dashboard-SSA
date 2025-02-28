@@ -12,7 +12,7 @@ const SCALEFUSION_API_KEY = process.env.REACT_APP_API_KEY;
 
 app.use(cors({ origin: "*", optionsSuccessStatus: 200 }));
 
-const urlDB = process.env.DB_URL;
+const urlDB = "mysql://root:ZXXpbahTXoxLeVYxeGIMpdjdruSZqRqv@mysql.railway.internal:3306/railway";
 
 let fetchProgress = {
   completedPages: 0,
