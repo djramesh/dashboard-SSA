@@ -11,7 +11,7 @@ const cache = new NodeCache({ stdTTL: 30 });
 const SCALEFUSION_API_KEY = process.env.REACT_APP_API_KEY;
 
 const corsOptions = {
-  origin: '*',
+  origin: 'https://ssaassamsmartclassroomschoolnetindia.com',
   optionsSuccessStatus: 200,
 };
 app.use(cors(corsOptions));
