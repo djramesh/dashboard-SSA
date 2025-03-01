@@ -112,7 +112,7 @@ const fetchAndStoreActiveStatusData = async (fromDate, toDate) => {
     );
 
     fetchProgress.totalPages = firstResponse.data.total_pages || 1;
-    console.log(`Total Pages: ${fetchProgress.totalPages}`);
+    // console.log(`Total Pages: ${fetchProgress.totalPages}`);
 
     const processPage = async (page) => {
       let retries = 0;
@@ -153,7 +153,7 @@ const fetchAndStoreActiveStatusData = async (fromDate, toDate) => {
           });
 
           fetchProgress.completedPages += 1;
-          console.log(`Completed Page: ${fetchProgress.completedPages}/${fetchProgress.totalPages}`);
+          // console.log(`Completed Page: ${fetchProgress.completedPages}/${fetchProgress.totalPages}`);
           await new Promise((resolve) => setTimeout(resolve, 1000)); // 1-second delay per page
           return;
         } catch (error) {
@@ -170,7 +170,7 @@ const fetchAndStoreActiveStatusData = async (fromDate, toDate) => {
       throw new Error(`Failed to fetch page ${page} after ${maxRetries} retries due to rate limit.`);
     };
 
-    const batchSize = 10;
+    const batchSize = 15;
     const pageBatches = [];
     for (let i = 1; i <= fetchProgress.totalPages; i += batchSize) {
       const batch = Array.from(
@@ -183,7 +183,7 @@ const fetchAndStoreActiveStatusData = async (fromDate, toDate) => {
     for (const batch of pageBatches) {
       await Promise.all(batch.map((page) => processPage(page)));
       if (batch.length === batchSize) {
-        await new Promise((resolve) => setTimeout(resolve, 3000));
+        await new Promise((resolve) => setTimeout(resolve, 15000));
       }
     }
 
@@ -357,7 +357,7 @@ app.get("/api/fetchProgress", (req, res) => {
       : fetchProgress.isFetching
       ? 0
       : 100;
-  console.log(`Progress API: ${progress}% (Completed: ${fetchProgress.completedPages}, Total: ${fetchProgress.totalPages})`);
+  // console.log(`Progress API: ${progress}% (Completed: ${fetchProgress.completedPages}, Total: ${fetchProgress.totalPages})`);
   res.json({
     isFetching: fetchProgress.isFetching,
     progress: progress.toFixed(2),
