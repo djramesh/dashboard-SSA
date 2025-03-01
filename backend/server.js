@@ -112,7 +112,7 @@ const fetchAndStoreActiveStatusData = async (fromDate, toDate) => {
     );
 
     fetchProgress.totalPages = firstResponse.data.total_pages || 1;
-    // console.log(`Total Pages: ${fetchProgress.totalPages}`);
+    console.log(`Total Pages: ${fetchProgress.totalPages}`);
 
     const processPage = async (page) => {
       let retries = 0;
@@ -153,8 +153,8 @@ const fetchAndStoreActiveStatusData = async (fromDate, toDate) => {
           });
 
           fetchProgress.completedPages += 1;
-          // console.log(`Completed Page: ${fetchProgress.completedPages}/${fetchProgress.totalPages}`);
-          await new Promise((resolve) => setTimeout(resolve, 1000)); // 1-second delay per page
+          console.log(`Completed Page: ${fetchProgress.completedPages}/${fetchProgress.totalPages}`);
+          await new Promise((resolve) => setTimeout(resolve, 1000));
           return;
         } catch (error) {
           if (error.response && error.response.status === 429) {
@@ -183,7 +183,7 @@ const fetchAndStoreActiveStatusData = async (fromDate, toDate) => {
     for (const batch of pageBatches) {
       await Promise.all(batch.map((page) => processPage(page)));
       if (batch.length === batchSize) {
-        await new Promise((resolve) => setTimeout(resolve, 15000));
+        await new Promise((resolve) => setTimeout(resolve, 6000));
       }
     }
 
