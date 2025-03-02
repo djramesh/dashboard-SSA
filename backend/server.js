@@ -104,7 +104,7 @@ const fetchAndStoreData = async () => {
   }
 };
 
-// Fetch and store active status data with improved rate limiting and timeout handling
+// Fetch and store active status data with improved timeout and retry handling
 const fetchAndStoreActiveStatusData = async (fromDate, toDate) => {
   const connection = await dbPool.getConnection();
   try {
@@ -119,27 +119,28 @@ const fetchAndStoreActiveStatusData = async (fromDate, toDate) => {
       {
         params: { from_date: fromDate, to_date: toDate, page: 1 },
         headers: { Authorization: `Token ${SCALEFUSION_API_KEY}` },
-        timeout: 30000, // 30-second timeout
+        timeout: 60000, // Increased to 60 seconds
       }
     );
 
     fetchProgress.totalPages = firstResponse.data.total_pages || 1;
-    console.log(`Total Pages: ${fetchProgress.totalPages}`);
+    console.log(`Total Pages to fetch: ${fetchProgress.totalPages}`);
 
     const processPage = async (page) => {
       let retries = 0;
       const maxRetries = 5;
       const backoffFactor = 2;
-      let delay = 2000; // Start with 2 seconds
+      let delay = 2000;
 
       while (retries < maxRetries) {
         try {
+          console.log(`Fetching page ${page} at ${new Date().toISOString()}`);
           const response = await axios.get(
             "https://api.scalefusion.com/api/v1/reports/device_availabilities.json?device_group_ids=149219",
             {
               params: { from_date: fromDate, to_date: toDate, page },
               headers: { Authorization: `Token ${SCALEFUSION_API_KEY}` },
-              timeout: 30000,
+              timeout: 60000, // Increased to 60 seconds
             }
           );
 
@@ -163,23 +164,26 @@ const fetchAndStoreActiveStatusData = async (fromDate, toDate) => {
 
           fetchProgress.completedPages += 1;
           console.log(`Completed Page: ${fetchProgress.completedPages}/${fetchProgress.totalPages}`);
-          await new Promise((resolve) => setTimeout(resolve, 3000)); // 3-second delay
+          await new Promise((resolve) => setTimeout(resolve, 5000)); // Increased to 5 seconds
           return;
         } catch (error) {
-          if (error.response && (error.response.status === 429 || error.response.status === 504)) {
+          if (axios.isAxiosError(error) && error.code === "ECONNABORTED") {
+            retries++;
+            console.warn(`Timeout on page ${page}. Retrying (${retries}/${maxRetries}) in ${delay / 1000}s...`);
+          } else if (error.response && (error.response.status === 429 || error.response.status === 504)) {
             retries++;
             console.warn(`Error ${error.response.status} on page ${page}. Retrying (${retries}/${maxRetries}) in ${delay / 1000}s...`);
-            await new Promise((resolve) => setTimeout(resolve, delay));
-            delay *= backoffFactor; // Exponential backoff
           } else {
             throw error;
           }
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          delay *= backoffFactor;
         }
       }
       throw new Error(`Failed to fetch page ${page} after ${maxRetries} retries`);
     };
 
-    const batchSize = 10;
+    const batchSize = 5; // Reduced from 10 to 5 to ease API load
     const pageBatches = [];
     for (let i = 1; i <= fetchProgress.totalPages; i += batchSize) {
       pageBatches.push(
@@ -190,7 +194,7 @@ const fetchAndStoreActiveStatusData = async (fromDate, toDate) => {
     for (const batch of pageBatches) {
       await Promise.all(batch.map(processPage));
       if (batch.length === batchSize) {
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        await new Promise((resolve) => setTimeout(resolve, 10000)); // Increased to 10 seconds between batches
       }
     }
 
@@ -390,7 +394,7 @@ app.get("*", (req, res) => {
 const startServer = async () => {
   await initializeDatabase();
   fetchAndStoreData(); // Initial fetch
-  setInterval(fetchAndStoreData, 5 * 60 * 1000); 
+  setInterval(fetchAndStoreData, 5 * 60 * 1000); // Every 5 minutes
   app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
 };
 
