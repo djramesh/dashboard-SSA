@@ -83,12 +83,13 @@ const DeviceData = () => {
   const [isFetching, setIsFetching] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [selectedProject, setSelectedProject] = useState("2228");
   const limit = 10;
 
   const fetchData = async (page = currentPage) => {
     setLoading(true);
     try {
-      const response = await axios.get("https://dashboard-ssa-production.up.railway.app/api/devices", {
+      const response = await axios.get(`https://dashboard-ssa-production.up.railway.app/api/all-devices${selectedProject}`, {
         params: {
           searchTerm,
           page,
@@ -116,15 +117,9 @@ const DeviceData = () => {
     }
   };
 
-  // Initial fetch
   useEffect(() => {
     fetchData(1);
-  }, []);
-
-  // Fetch on district or status change
-  useEffect(() => {
-    fetchData(1);
-  }, [selectedDistrict, connectionStatus]);
+  }, [selectedProject, selectedDistrict, connectionStatus]);
 
   const handleSearchKeyPress = (e) => {
     if (e.key === "Enter") {
@@ -140,43 +135,19 @@ const DeviceData = () => {
     setLoading(true);
     setIsFetching(true);
     setFetchProgress(0);
-    // console.log("Starting data fetch...");
-
     try {
-      // console.log("Sending fetchActiveStatusData request...");
-      axios
-        .get("https://dashboard-ssa-production.up.railway.app/api/fetchActiveStatusData", {
-          params: { fromDate: startDate, toDate: endDate },
-        })
-        .then(() => {
-          console.log("Fetch request completed on server");
-        })
-        .catch((error) => {
-          console.error("Error in fetchActiveStatusData:", error.message);
-          setIsFetching(false);
-          setLoading(false);
-          alert("Error fetching data");
-        });
-
-      // console.log("Starting polling immediately...");
+      await axios.get(`https://dashboard-ssa-production.up.railway.app/api/fetchActiveStatusData${selectedProject}`, {
+        params: { fromDate: startDate, toDate: endDate },
+      });
       const pollProgress = setInterval(async () => {
         try {
           const progressResponse = await axios.get(
-            "https://dashboard-ssa-production.up.railway.app/api/fetchProgress"
+            `https://dashboard-ssa-production.up.railway.app/api/fetchProgress${selectedProject}`
           );
-          const { progress, isFetching, completedPages, totalPages } =
-            progressResponse.data;
-          // console.log(
-          //   `Poll Response - Progress: ${progress}%, Completed: ${completedPages}/${totalPages}, IsFetching: ${isFetching}`
-          // );
-          setFetchProgress((prev) => {
-            const newProgress = parseFloat(progress);
-            // console.log(`Updating fetchProgress: ${prev} -> ${newProgress}`);
-            return newProgress;
-          });
+          const { progress, isFetching, completedPages, totalPages } = progressResponse.data;
+          setFetchProgress(parseFloat(progress));
           setIsFetching(isFetching);
           if (!isFetching && progress >= 100) {
-            console.log("Fetching complete, clearing interval");
             clearInterval(pollProgress);
             await fetchData(1);
             setIsFetching(false);
@@ -192,10 +163,10 @@ const DeviceData = () => {
         }
       }, 500);
     } catch (error) {
-      console.error("Unexpected error in handleFetchData:", error.message);
+      console.error("Error in fetchActiveStatusData:", error.message);
       setIsFetching(false);
       setLoading(false);
-      alert("Error initiating fetch");
+      alert("Error fetching data");
     }
   };
 
@@ -212,8 +183,8 @@ const DeviceData = () => {
     datasets: [
       {
         data: [activeDevices, inactiveDevices],
-        backgroundColor: ["#32CD32", "#FF0000"],
-        hoverBackgroundColor: ["#228B22", "#B22222"],
+        backgroundColor: ["#10B981", "#EF4444"],
+        hoverBackgroundColor: ["#059669", "#DC2626"],
       },
     ],
   };
@@ -222,7 +193,7 @@ const DeviceData = () => {
     try {
       setLoading(true);
       const response = await axios.get(
-        "https://dashboard-ssa-production.up.railway.app/api/all-devices",
+        `https://dashboard-ssa-production.up.railway.app/api/all-devices${selectedProject}`,
         {
           params: {
             searchTerm,
@@ -238,7 +209,7 @@ const DeviceData = () => {
       const ws = XLSX.utils.json_to_sheet(sanitizedData);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Devices_db");
-      XLSX.writeFile(wb, "devices_data.xlsx");
+      XLSX.writeFile(wb, `devices_data_${selectedProject}.xlsx`);
     } catch (error) {
       console.error("Error downloading Excel:", error);
       alert("Failed to download Excel file.");
@@ -262,47 +233,27 @@ const DeviceData = () => {
   };
 
   if (loading || isFetching) {
-    console.log(`Rendering progress bar with fetchProgress: ${fetchProgress}`);
     return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100vh",
-        }}
-      >
-        <div className="loader">
+      <div style={styles.loadingContainer}>
+        <div style={styles.loader}>
           <img
             src="/loading.gif"
             alt="Loading..."
-            style={{ width: "220px", height: "200px" }}
+            style={styles.loaderImage}
           />
         </div>
-        <div
-          style={{
-            textAlign: "center",
-            marginTop: "5px",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <p>Due to API rate limits, loading may slow down. Please wait...</p>
+        <div style={styles.loadingTextContainer}>
+          <p style={styles.loadingText}>Due to API rate limits, loading may slow down. Please wait...</p>
           {isFetching && (
-            <div style={{ width: "50%", marginTop: "10px" }}>
+            <div style={styles.progressContainer}>
               <div>
-                <p>
-                  Date Range : {startDate} to {endDate}
-                </p>
-                <p>Fetching Data: {fetchProgress.toFixed(2)}%</p>
+                <p style={styles.progressText}>Date Range: {startDate} to {endDate}</p>
+                <p style={styles.progressText}>Fetching Data: {fetchProgress.toFixed(2)}%</p>
               </div>
               <LinearProgress
                 variant="determinate"
                 value={fetchProgress}
-                sx={{ height: 10, borderRadius: 5 }}
+                sx={styles.progressBar}
               />
             </div>
           )}
@@ -312,13 +263,25 @@ const DeviceData = () => {
   }
 
   return (
-    <div>
+    <div style={styles.mainContainer}>
       <Navbar />
+      <div style={styles.projectContainer}>
+        <label style={styles.label}>Select Project:</label>
+        <select
+          value={selectedProject}
+          onChange={(e) => setSelectedProject(e.target.value)}
+          style={styles.dropdown}
+        >
+          <option value="2228">FY24-25 (Project 2228)</option>
+          <option value="3570">FY23-24 (Project 3570)</option>
+        </select>
+      </div>
       <h1 style={styles.header}>Dashboard of Assam Smart Classroom Project</h1>
-      <h2 style={styles.header}>Device Data</h2>
-      <div className="chartContainer" style={styles.chartContainer}>
-        <div className="summary" style={styles.summary}>
-          <h3>Total Devices: {totalDevices}</h3>
+      <h2 style={styles.subHeader}>Smartclassroom {selectedProject}</h2>
+      <h3 style={styles.subHeader}>Device Data</h3>
+      <div style={styles.chartContainer} className="chartContainer">
+        <div style={styles.summary} className="summary">
+          <h3 style={styles.summaryTitle}>Total Devices: {totalDevices}</h3>
           <p
             style={styles.activeCount}
             onClick={() => {
@@ -338,14 +301,14 @@ const DeviceData = () => {
             Live Inactive Devices: {inactiveDevices}
           </p>
           <p
-            style={{ cursor: "pointer", color: "#000" }}
+            style={styles.showAll}
             onClick={() => handleFilter("all")}
           >
             Show All Devices
           </p>
-          <h4>
+          <h4 style={styles.dateRangeTitle}>
             Total Count for Date Range: <br />
-            <span style={{ opacity: 0.6, fontSize: "0.9rem" }}>
+            <span style={styles.dateRangeText}>
               {startDate && endDate
                 ? `${new Date(startDate).toLocaleDateString(
                     "en-GB"
@@ -377,10 +340,10 @@ const DeviceData = () => {
           <Pie data={pieChartData} />
         </div>
 
-        <div className="districtContainer" style={styles.districtContainer}>
+        <div style={styles.districtContainer} className="districtContainer">
           <h4 style={styles.districtHeader}>
             District Wise Data for Date Range: <br />
-            <span style={{ opacity: 0.6, fontSize: "0.9rem" }}>
+            <span style={styles.dateRangeText}>
               {startDate && endDate
                 ? `${new Date(startDate).toLocaleDateString(
                     "en-GB"
@@ -393,7 +356,7 @@ const DeviceData = () => {
           <div style={styles.scrollable}>
             {districtData.map((item, index) => (
               <div key={index} style={styles.districtItem}>
-                <p>
+                <p style={styles.districtName}>
                   <strong>{item.district}</strong>
                 </p>
                 <p style={styles.activeCount}>Connected: {item.connected}</p>
@@ -406,26 +369,22 @@ const DeviceData = () => {
         </div>
       </div>
 
-      <div
-        className="container"
-        style={{ display: "flex", alignItems: "center" }}
-      >
-        <div className="datePickerContainer">
-          <p>From :</p>{" "}
+      <div style={styles.controlsContainer} className="container">
+        <div style={styles.datePickerContainer} className="datePickerContainer">
+          <p style={styles.label}>From:</p>
           <input
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
             style={styles.dateInput}
           />
-          <p> To : </p>
+          <p style={styles.label}>To:</p>
           <input
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
             style={styles.dateInput}
           />
-          <br />
           <button onClick={handleFetchData} style={styles.fetchButton}>
             Fetch Data
           </button>
@@ -434,29 +393,19 @@ const DeviceData = () => {
           <img
             src="/search.png"
             alt="Search"
-            style={{
-              width: "15px",
-              height: "15px",
-              position: "absolute",
-              marginRight: "215px",
-            }}
+            style={styles.searchIcon}
           />
-
           <input
             type="text"
             placeholder="Search by name or Device ID..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyPress={handleSearchKeyPress}
-            style={{
-              ...styles.searchInput,
-              width: "210px",
-              paddingLeft: "30px",
-            }}
+            style={styles.searchInput}
           />
         </div>
         <div style={styles.dropdownContainer}>
-          <label htmlFor="">Select District : </label>
+          <label style={styles.label}>Select District:</label>
           <select
             value={selectedDistrict}
             onChange={(e) => setSelectedDistrict(e.target.value)}
@@ -471,7 +420,7 @@ const DeviceData = () => {
           </select>
         </div>
         <div style={styles.dropdownContainer}>
-          <label htmlFor="">Select Status : </label>
+          <label style={styles.label}>Select Status:</label>
           <select
             value={connectionStatus}
             onChange={(e) => setConnectionStatus(e.target.value)}
@@ -505,7 +454,7 @@ const DeviceData = () => {
                   "HM Name",
                   "HM Contact No.",
                 ].map((header) => (
-                  <th style={styles.tableHeader} key={header}>
+                  <th style={styles.tableHeaderCell} key={header}>
                     {header}
                   </th>
                 ))}
@@ -533,8 +482,8 @@ const DeviceData = () => {
                         ...styles.statusDot,
                         background:
                           item.connection_state === "Active"
-                            ? "linear-gradient(45deg, #32CD32, #00FF00)"
-                            : "linear-gradient(45deg, #FF0000, #B22222)",
+                            ? "linear-gradient(45deg, #10B981, #059669)"
+                            : "linear-gradient(45deg, #EF4444, #DC2626)",
                       }}
                     ></span>
                     {item.connection_state}
@@ -554,11 +503,12 @@ const DeviceData = () => {
               style={{
                 ...styles.paginationButton,
                 opacity: currentPage === 1 ? 0.5 : 1,
+                cursor: currentPage === 1 ? "not-allowed" : "pointer",
               }}
             >
               Previous
             </button>
-            <span>
+            <span style={styles.paginationText}>
               Page {currentPage} of {totalPages}
             </span>
             <button
@@ -567,6 +517,7 @@ const DeviceData = () => {
               style={{
                 ...styles.paginationButton,
                 opacity: currentPage === totalPages ? 0.5 : 1,
+                cursor: currentPage === totalPages ? "not-allowed" : "pointer",
               }}
             >
               Next
@@ -574,148 +525,335 @@ const DeviceData = () => {
           </div>
         </div>
       ) : (
-        <p>No data available to display.</p>
+        <p style={styles.noDataText}>No data available to display.</p>
       )}
     </div>
   );
 };
 
 const styles = {
+  mainContainer: {
+    minHeight: "100vh",
+    background: "linear-gradient(180deg, #1F2937 0%, #111827 100%)",
+    color: "#FFFFFF",
+    padding: "20px",
+  },
+  projectContainer: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "8px",
+    marginBottom: "20px",
+  },
   header: {
     textAlign: "center",
-    marginTop: "20px",
-    fontSize: "2rem",
-    color: "#333",
+    marginTop: "32px",
+    fontSize: "2.5rem",
+    fontWeight: "700",
+    color: "#F3F4F6",
   },
-  searchContainer: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  searchInput: {
-    padding: "12px",
-    fontSize: "1rem",
-    borderRadius: "50px",
-    border: "1px solid #ccc",
-  },
-  downloadButton: {
-    padding: "10px 20px",
-    backgroundColor: "#0096FF",
-    color: "#fff",
-    border: "none",
-    borderRadius: "50px",
-    cursor: "pointer",
-    fontSize: "1rem",
-    marginLeft: "20px",
+  subHeader: {
+    textAlign: "center",
+    fontSize: "1.5rem",
+    fontWeight: "600",
+    color: "#F3F4F6",
+    marginTop: "8px",
   },
   chartContainer: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    margin: "20px auto",
-    width: "80%",
+    margin: "32px auto",
     gap: "40px",
-    flexWrap: "nowrap",
+    flexWrap: "wrap",
   },
   summary: {
     textAlign: "center",
-    backgroundColor: "#fff",
-    padding: "20px",
-    borderRadius: "8px",
-    boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)",
+    background: "rgba(255, 255, 255, 0.1)",
+    backdropFilter: "blur(12px)",
+    padding: "24px",
+    borderRadius: "16px",
+    boxShadow: "0 8px 24px rgba(0, 0, 0, 0.2)",
+    border: "1px solid rgba(255, 255, 255, 0.2)",
+    width: "100%",
+    maxWidth: "360px",
   },
-  activeCount: { color: "#32CD32", cursor: "pointer" },
-  inactiveCount: { color: "#FF0000", cursor: "pointer" },
-  tableHeader: {
-    backgroundColor: "#0096FF",
-    color: "white",
-    padding: "15px",
+  summaryTitle: {
+    fontSize: "1.25rem",
+    fontWeight: "600",
+    color: "#F3F4F6",
+  },
+  activeCount: {
+    color: "#10B981",
+    cursor: "pointer",
+    marginTop: "12px",
+    fontSize: "1rem",
+  },
+  inactiveCount: {
+    color: "#EF4444",
+    cursor: "pointer",
+    marginTop: "8px",
+    fontSize: "1rem",
+  },
+  showAll: {
+    cursor: "pointer",
+    color: "#D1D5DB",
+    marginTop: "8px",
+    fontSize: "1rem",
+  },
+  dateRangeTitle: {
+    marginTop: "16px",
+    fontSize: "1.125rem",
+    color: "#F3F4F6",
+  },
+  dateRangeText: {
+    opacity: 0.7,
+    fontSize: "0.875rem",
+    color: "#D1D5DB",
+  },
+  pieChartContainer: {
+    background: "rgba(255, 255, 255, 0.1)",
+    backdropFilter: "blur(12px)",
+    padding: "24px",
+    borderRadius: "16px",
+    boxShadow: "0 8px 24px rgba(0, 0, 0, 0.2)",
+    border: "1px solid rgba(255, 255, 255, 0.2)",
+    width: "100%",
+    maxWidth: "360px",
+  },
+  districtContainer: {
+    background: "rgba(255, 255, 255, 0.1)",
+    backdropFilter: "blur(12px)",
+    padding: "24px",
+    borderRadius: "16px",
+    boxShadow: "0 8px 24px rgba(0, 0, 0, 0.2)",
+    border: "1px solid rgba(255, 255, 255, 0.2)",
+    width: "100%",
+    maxWidth: "360px",
+  },
+  districtHeader: {
+    marginBottom: "16px",
     textAlign: "center",
+    fontSize: "1.125rem",
+    color: "#F3F4F6",
+  },
+  scrollable: {
+    maxHeight: "320px",
+    overflowY: "auto",
+    padding: "12px",
+  },
+  districtItem: {
+    marginBottom: "12px",
+    borderBottom: "1px solid rgba(255, 255, 255, 0.2)",
+    paddingBottom: "12px",
+  },
+  districtName: {
+    fontWeight: "600",
+    color: "#F3F4F6",
+  },
+  controlsContainer: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "24px",
+    flexWrap: "wrap",
+    marginTop: "32px",
+  },
+  datePickerContainer: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+  },
+  label: {
+    color: "#F3F4F6",
+    fontSize: "1rem",
+  },
+  dateInput: {
+    padding: "12px",
+    fontSize: "1rem",
+    borderRadius: "8px",
+    border: "1px solid rgba(255, 255, 255, 0.2)",
+    background: "rgba(255, 255, 255, 0.9)",
+    color: "#111827",
+    outline: "none",
+    transition: "border-color 0.3s",
+  },
+  fetchButton: {
+    padding: "12px 24px",
+    fontSize: "1rem",
+    background: "#3B82F6",
+    color: "#FFFFFF",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    transition: "background 0.3s",
+  },
+  searchContainer: {
+    position: "relative",
+    display: "flex",
+    alignItems: "center",
+  },
+  searchIcon: {
+    width: "16px",
+    height: "16px",
+    position: "absolute",
+    left: "12px",
+    top: "50%",
+    transform: "translateY(-50%)",
+  },
+  searchInput: {
+    padding: "12px 12px 12px 40px",
+    fontSize: "1rem",
+    borderRadius: "8px",
+    border: "1px solid rgba(255, 255, 255, 0.2)",
+    background: "rgba(255, 255, 255, 0.9)",
+    color: "#111827",
+    width: "224px",
+    outline: "none",
+    transition: "border-color 0.3s",
+  },
+  dropdownContainer: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+  },
+  dropdown: {
+    padding: "12px",
+    fontSize: "1rem",
+    borderRadius: "8px",
+    border: "1px solid rgba(255, 255, 255, 0.2)",
+    background: "rgba(255, 255, 255, 0.9)",
+    color: "#111827",
+    width: "160px",
+    outline: "none",
+    transition: "border-color 0.3s",
+  },
+  downloadButton: {
+    padding: "12px 24px",
+    background: "#3B82F6",
+    color: "#FFFFFF",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontSize: "1rem",
+    transition: "background 0.3s",
+  },
+  tableContainer: {
+    margin: "32px auto",
+    overflowX: "auto",
+  },
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    background: "rgba(255, 255, 255, 0.1)",
+    backdropFilter: "blur(12px)",
+    borderRadius: "16px",
+    border: "1px solid rgba(255, 255, 255, 0.2)",
+    boxShadow: "0 8px 24px rgba(0, 0, 0, 0.2)",
+  },
+  tableHeader: {
+    background: "#3B82F6",
+  },
+  tableHeaderCell: {
+    padding: "16px",
+    textAlign: "center",
+    color: "#FFFFFF",
+    fontWeight: "600",
+  },
+  tableBody: {
+    background: "transparent",
   },
   tableData: {
-    padding: "10px",
-    borderBottom: "1px dotted #ddd",
+    padding: "12px",
+    borderBottom: "1px solid rgba(255, 255, 255, 0.2)",
     textAlign: "center",
+    color: "#F3F4F6",
   },
-  evenRow: { backgroundColor: "#f2f2f2" },
-  oddRow: { backgroundColor: "#ffffff" },
+  evenRow: {
+    background: "rgba(255, 255, 255, 0.05)",
+  },
+  oddRow: {
+    background: "rgba(255, 255, 255, 0.1)",
+  },
   statusDot: {
     display: "inline-block",
-    width: "10px",
-    height: "10px",
+    width: "12px",
+    height: "12px",
     borderRadius: "50%",
     marginRight: "8px",
   },
-  table: { width: "100%", borderCollapse: "collapse", marginTop: "20px" },
-  dropdownContainer: { textAlign: "center", margin: "10px 20px" },
-  dropdown: {
-    padding: "10px",
-    fontSize: "1rem",
-    borderRadius: "30px",
-    width: "10rem",
+  pagination: {
+    marginTop: "24px",
+    textAlign: "center",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: "16px",
   },
-  tableContainer: {
-    overflowX: "auto",
-    marginTop: "20px",
-    position: "relative",
-    paddingBottom: "10px",
-  },
-  dateInput: {
-    padding: "10px",
-    margin: "0 10px",
-    fontSize: "1rem",
-    border: "1px solid #ccc",
-    borderRadius: "5px",
-  },
-  fetchButton: {
-    padding: "10px 20px",
-    fontSize: "1rem",
-    backgroundColor: "#0096FF",
-    color: "#fff",
+  paginationButton: {
+    padding: "12px 24px",
+    background: "#3B82F6",
+    color: "#FFFFFF",
     border: "none",
     borderRadius: "50px",
-    cursor: "pointer",
+    fontSize: "1rem",
+    transition: "background 0.3s",
   },
-  districtContainer: {
-    backgroundColor: "#fff",
-    padding: "20px",
-    borderRadius: "8px",
-    boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)",
+  paginationText: {
+    color: "#F3F4F6",
+    fontSize: "1rem",
   },
-  districtHeader: { marginBottom: "10px", textAlign: "center" },
-  scrollable: { maxHeight: "300px", overflowY: "auto", padding: "10px" },
-  districtItem: {
-    marginBottom: "10px",
-    borderBottom: "1px solid #ddd",
-    paddingBottom: "10px",
+  loadingContainer: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "100vh",
+    background: "linear-gradient(180deg, #1F2937 0%, #111827 100%)",
+    color: "#FFFFFF",
   },
   loader: {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    position: "fixed",
-    top: "50%",
-    left: "50%",
-    transform: "translate(-50%, -50%)",
-    width: "150px",
-    height: "150px",
   },
-  pagination: { marginTop: "20px", textAlign: "center" },
-  paginationButton: {
-    padding: "10px 20px",
-    margin: "0 10px",
-    backgroundColor: "#0096FF",
-    color: "#fff",
-    border: "none",
-    borderRadius: "50px",
-    cursor: "pointer",
+  loaderImage: {
+    width: "220px",
+    height: "220px",
   },
-
-  pieChartContainer: {
-    backgroundColor: "#fff",
-    padding: "20px",
-    borderRadius: "8px",
-    boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)",
+  loadingTextContainer: {
+    textAlign: "center",
+    marginTop: "8px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+  },
+  loadingText: {
+    fontSize: "1.125rem",
+    color: "#F3F4F6",
+  },
+  progressContainer: {
+    width: "50%",
+    marginTop: "16px",
+  },
+  progressText: {
+    color: "#F3F4F6",
+    fontSize: "1rem",
+  },
+  progressBar: {
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    "& .MuiLinearProgress-bar": {
+      backgroundColor: "#3B82F6",
+    },
+  },
+  noDataText: {
+    textAlign: "center",
+    marginTop: "32px",
+    fontSize: "1.125rem",
+    color: "#F3F4F6",
   },
 };
 
