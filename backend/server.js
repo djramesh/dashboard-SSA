@@ -15,6 +15,7 @@ const API_KEYS = {
 };
 
 app.use(cors({ origin: "*", optionsSuccessStatus: 200 }));
+app.use(express.json());
 
 const dbPool = mysql.createPool({
   connectionLimit: 10,
