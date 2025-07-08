@@ -415,7 +415,7 @@ app.get("/api/devices/:projectId", async (req, res) => {
   }
 });
 
-app.get("/api/all-devices/:projectId", async (req, res) => {
+app.get("/api/devices/:projectId", async (req, res) => {
   const { projectId } = req.params;
   const { searchTerm = "", district = "All", status = "All" } = req.query;
   const tableName = `project_${projectId}_db`;
