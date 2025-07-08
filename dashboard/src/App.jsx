@@ -189,34 +189,34 @@ const DeviceData = () => {
     ],
   };
 
-  const handleDownload = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get(
-        `https://dashboard-ssa-production.up.railway.app/api/all-devices${selectedProject}`,
-        {
-          params: {
-            searchTerm,
-            district: selectedDistrict,
-            status: connectionStatus,
-          },
-        }
-      );
-      const allDevices = response.data.devices || [];
-      const sanitizedData = allDevices.map(
-        ({ hm_contact_number, ...rest }) => rest
-      );
-      const ws = XLSX.utils.json_to_sheet(sanitizedData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Devices_db");
-      XLSX.writeFile(wb, `devices_data_${selectedProject}.xlsx`);
-    } catch (error) {
-      console.error("Error downloading Excel:", error);
-      alert("Failed to download Excel file.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // const handleDownload = async () => {
+  //   try {
+  //     setLoading(true);
+  //     const response = await axios.get(
+  //       `https://dashboard-ssa-production.up.railway.app/api/all-devices${selectedProject}`,
+  //       {
+  //         params: {
+  //           searchTerm,
+  //           district: selectedDistrict,
+  //           status: connectionStatus,
+  //         },
+  //       }
+  //     );
+  //     const allDevices = response.data.devices || [];
+  //     const sanitizedData = allDevices.map(
+  //       ({ hm_contact_number, ...rest }) => rest
+  //     );
+  //     const ws = XLSX.utils.json_to_sheet(sanitizedData);
+  //     const wb = XLSX.utils.book_new();
+  //     XLSX.utils.book_append_sheet(wb, ws, "Devices_db");
+  //     XLSX.writeFile(wb, `devices_data_${selectedProject}.xlsx`);
+  //   } catch (error) {
+  //     console.error("Error downloading Excel:", error);
+  //     alert("Failed to download Excel file.");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const handleNextPage = () => {
     if (currentPage < totalPages) {
