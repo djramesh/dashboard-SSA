@@ -2,7 +2,7 @@
 
 body {
   font-family: "Source Sans 3", sans-serif;
-  background-color: rgb(243, 243, 243);
+  /* background-color: rgb(243, 243, 243); */
   scroll-behavior: smooth;
 }
 
@@ -11,7 +11,9 @@ html {
 }
 
 * {
-  scroll-behavior: smooth; /* Ensures smoother scrolling for all elements */
+  scroll-behavior: smooth;
+  margin: 0;
+  padding: 0;
 }
 
 .container{
@@ -33,6 +35,10 @@ html {
     flex-direction: column;
     align-items: center;
     /* width: 100%; */
+  }
+
+  body{
+    width: 100%;
   }
 
   .container{

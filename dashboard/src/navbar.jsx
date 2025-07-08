@@ -1,11 +1,11 @@
 import React from 'react';
-import './navbar.css';
+import './Navbar.css';
 
  const Navbar = () => {
   return (
     <nav className="navbar">
       <div className="navbar-logo">
-        <img src="https://www.schoolnetindia.com/static/372dd395c01da58f8921a5f3877007ff/f66a4/a.webp" alt="Logo" />
+        <img src="./logo-white.png" alt="Logo" />
       </div>
       {/* <ul className="navbar-links">
         <li><a href="#home">Home</a></li>
