@@ -87,7 +87,7 @@ const fetchAndStoreData = async (projectId) => {
 
   let nextCursor = null;
   try {
-    const connection = await mysql.createConnection(urlDB);
+    const connection = await dbPool.getConnection();
     do {
       const response = await axios.get(apiUrl, {
         params: { cursor: nextCursor },
@@ -154,7 +154,7 @@ const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
   }
 
   try {
-    const connection = await mysql.createConnection(urlDB);
+    const connection = await dbPool.getConnection();
     const activeDataMap = new Map();
     const allDeviceIds = new Set();
 
@@ -342,7 +342,7 @@ app.get("/api/devices/:projectId", async (req, res) => {
   }
 
   try {
-    const connection = await mysql.createConnection(urlDB);
+    const connection = await dbPool.getConnection();
     let query = `SELECT * FROM ${tableName} WHERE 1=1`;
     const params = [];
 
@@ -425,7 +425,7 @@ app.get("/api/all-devices/:projectId", async (req, res) => {
   }
 
   try {
-    const connection = await mysql.createConnection(urlDB);
+    const connection = await dbPool.getConnection();
     let query = `SELECT * FROM ${tableName} WHERE 1=1`;
     const params = [];
 
@@ -470,7 +470,7 @@ app.get("/api/device-stats/:projectId", async (req, res) => {
   }
 
   try {
-    const connection = await mysql.createConnection(urlDB);
+    const connection = await dbPool.getConnection();
     const [[stats]] = await connection.query(
       `SELECT COUNT(*) AS total, SUM(connection_state = 'Active') AS active, SUM(connection_state = 'Inactive') AS inactive FROM ${tableName}`
     );
