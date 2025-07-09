@@ -6,7 +6,7 @@ const NodeCache = require("node-cache");
 require("dotenv").config();
 
 const app = express();
-const PORT = process.env.PORT || 3006;
+const PORT = process.env.PORT || 3006; // Use Railway's PORT or fallback to 3006
 const cache = new NodeCache({ stdTTL: 30 });
 
 const API_KEYS = {
@@ -287,7 +287,7 @@ const convertToHumanReadable = (seconds) => {
   return `${hours} hr ${minutes} min ${seconds} sec`;
 };
 
-app.get("/api/devices:projectId", async (req, res) => {
+app.get("/api/devices/:projectId", async (req, res) => {
   const { projectId } = req.params;
   const { searchTerm = "", page = 1, limit = 10, district = "All", status = "All" } = req.query;
   const offset = (page - 1) * limit;
@@ -364,7 +364,7 @@ app.get("/api/devices:projectId", async (req, res) => {
   }
 });
 
-app.get("/api/all-devices:projectId", async (req, res) => {
+app.get("/api/all-devices/:projectId", async (req, res) => {
   const { projectId } = req.params;
   const { searchTerm = "", district = "All", status = "All" } = req.query;
   const tableName = `project_${projectId}_db`;
