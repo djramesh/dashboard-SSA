@@ -89,7 +89,7 @@ const DeviceData = () => {
   const fetchData = async (page = currentPage) => {
     setLoading(true);
     try {
-      const response = await axios.get(`https://dashboard-ssa-production.up.railway.app/api/devices/${selectedProject}`, {
+      const response = await axios.get(`https://dashboard-ssa-production.up.railway.app/api/all-devices/${selectedProject}`, {
         params: {
           searchTerm,
           page,
