@@ -89,7 +89,7 @@ const DeviceData = () => {
   const fetchData = async (page = currentPage) => {
     setLoading(true);
     try {
-      const response = await axios.get(`https://dashboard-ssa-production.up.railway.app/api/devices${selectedProject}`, {
+      const response = await axios.get(`https://dashboard-ssa-production.up.railway.app/api/devices/${selectedProject}`, {
         params: {
           searchTerm,
           page,
@@ -136,13 +136,13 @@ const DeviceData = () => {
     setIsFetching(true);
     setFetchProgress(0);
     try {
-      await axios.get(`https://dashboard-ssa-production.up.railway.app/api/fetchActiveStatusData${selectedProject}`, {
+      await axios.get(`https://dashboard-ssa-production.up.railway.app/api/fetchActiveStatusData/${selectedProject}`, {
         params: { fromDate: startDate, toDate: endDate },
       });
       const pollProgress = setInterval(async () => {
         try {
           const progressResponse = await axios.get(
-            `https://dashboard-ssa-production.up.railway.app/api/fetchProgress${selectedProject}`
+            `https://dashboard-ssa-production.up.railway.app/api/fetchProgress/${selectedProject}`
           );
           const { progress, isFetching, completedPages, totalPages } = progressResponse.data;
           setFetchProgress(parseFloat(progress));
@@ -189,34 +189,34 @@ const DeviceData = () => {
     ],
   };
 
-  // const handleDownload = async () => {
-  //   try {
-  //     setLoading(true);
-  //     const response = await axios.get(
-  //       `https://dashboard-ssa-production.up.railway.app/api/all-devices${selectedProject}`,
-  //       {
-  //         params: {
-  //           searchTerm,
-  //           district: selectedDistrict,
-  //           status: connectionStatus,
-  //         },
-  //       }
-  //     );
-  //     const allDevices = response.data.devices || [];
-  //     const sanitizedData = allDevices.map(
-  //       ({ hm_contact_number, ...rest }) => rest
-  //     );
-  //     const ws = XLSX.utils.json_to_sheet(sanitizedData);
-  //     const wb = XLSX.utils.book_new();
-  //     XLSX.utils.book_append_sheet(wb, ws, "Devices_db");
-  //     XLSX.writeFile(wb, `devices_data_${selectedProject}.xlsx`);
-  //   } catch (error) {
-  //     console.error("Error downloading Excel:", error);
-  //     alert("Failed to download Excel file.");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
+  const handleDownload = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(
+        `https://dashboard-ssa-production.up.railway.app/api/all-devices/${selectedProject}`,
+        {
+          params: {
+            searchTerm,
+            district: selectedDistrict,
+            status: connectionStatus,
+          },
+        }
+      );
+      const allDevices = response.data.devices || [];
+      const sanitizedData = allDevices.map(
+        ({ hm_contact_number, ...rest }) => rest
+      );
+      const ws = XLSX.utils.json_to_sheet(sanitizedData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Devices_db");
+      XLSX.writeFile(wb, `devices_data_${selectedProject}.xlsx`);
+    } catch (error) {
+      console.error("Error downloading Excel:", error);
+      alert("Failed to download Excel file.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleNextPage = () => {
     if (currentPage < totalPages) {

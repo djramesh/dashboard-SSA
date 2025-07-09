@@ -6,20 +6,30 @@ const NodeCache = require("node-cache");
 require("dotenv").config();
 
 const app = express();
-const PORT = 3006;
+const PORT = process.env.PORT || 3006;
 const cache = new NodeCache({ stdTTL: 30 });
 
 const API_KEYS = {
-  2228: "526906b4a7c546fcade5fc370ed6f94c",
-  3570: "0f708bc142624a1ba8209359cb65d5b7",
+  "2228": process.env.API_KEY_2228,
+  "3570": process.env.API_KEY_3570,
 };
 
-app.use(cors({ origin: "*", optionsSuccessStatus: 200 }));
+app.use(
+  cors({
+    origin: [
+      "https://ssaassamsmartclassroomschoolnetindia.com",
+      "http://localhost:3000", // For local development
+    ],
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    optionsSuccessStatus: 200,
+  })
+);
 app.use(express.json());
 
 const dbPool = mysql.createPool({
   connectionLimit: 10,
-  uri: "mysql://root:ZXXpbahTXoxLeVYxeGIMpdjdruSZqRqv@mysql.railway.internal:3306/railway",
+  uri: process.env.DATABASE_URL || "mysql://root:ZXXpbahTXoxLeVYxeGIMpdjdruSZqRqv@mysql.railway.internal:3306/railway",
 });
 
 const fetchProgressMap = {
@@ -65,7 +75,7 @@ const initializeDatabase = async () => {
       total_active_duration VARCHAR(50)
     )
   `);
-  await connection.end();
+  connection.release();
 };
 
 initializeDatabase().catch((err) =>
@@ -97,21 +107,16 @@ const fetchAndStoreData = async (projectId) => {
       const devices = response.data.devices.map((device) => [
         device.device.id,
         device.device.name,
-        device.device.custom_properties.find((prop) => prop.name === "District")
-          ?.value || "N/A",
-        device.device.custom_properties.find((prop) => prop.name === "Block")
-          ?.value || "N/A",
+        device.device.custom_properties.find((prop) => prop.name === "District")?.value || "N/A",
+        device.device.custom_properties.find((prop) => prop.name === "Block")?.value || "N/A",
         device.device.power_on_time || null,
         device.device.power_off_time || null,
         device.device.last_seen_on || null,
         device.device.connection_state || "N/A",
         device.device.connection_status || "N/A",
         device.device.device_status || "N/A",
-        device.device.custom_properties.find((prop) => prop.name === "HM Name")
-          ?.value || "N/A",
-        device.device.custom_properties.find(
-          (prop) => prop.name === "HM Contact Number"
-        )?.value || "N/A",
+        device.device.custom_properties.find((prop) => prop.name === "HM Name")?.value || "N/A",
+        device.device.custom_properties.find((prop) => prop.name === "HM Contact Number")?.value || "N/A",
       ]);
 
       await connection.query(
@@ -126,18 +131,15 @@ const fetchAndStoreData = async (projectId) => {
       );
       nextCursor = response.data.next_cursor;
     } while (nextCursor);
-    await connection.end();
+    connection.release();
   } catch (error) {
-    console.error(
-      `Error fetching or storing data for project ${projectId}:`,
-      error.message
-    );
+    console.error(`Error fetching or storing data for project ${projectId}:`, error.message);
   }
 };
 
 setInterval(() => fetchAndStoreData("2228"), 5 * 60 * 1000);
 setInterval(() => fetchAndStoreData("3570"), 5 * 60 * 1000);
-fetchAndStoreData("2228")
+fetchAndStoreData("2228");
 fetchAndStoreData("3570");
 
 const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
@@ -166,11 +168,8 @@ const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
       headers: { Authorization: `Token ${apiKey}` },
     });
 
-    fetchProgressMap[projectId].totalPages =
-      firstResponse.data.total_pages || 1;
-    console.log(
-      `Total Pages for project ${projectId}: ${fetchProgressMap[projectId].totalPages}`
-    );
+    fetchProgressMap[projectId].totalPages = firstResponse.data.total_pages || 1;
+    console.log(`Total Pages for project ${projectId}: ${fetchProgressMap[projectId].totalPages}`);
 
     const processPage = async (page) => {
       let retries = 0;
@@ -195,10 +194,7 @@ const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
             if (device.availability_status === "active") {
               const date = device.from_date.split(" ")[0];
               if (!activeDataMap.has(deviceId)) {
-                activeDataMap.set(deviceId, {
-                  totalDuration: 0,
-                  activeDates: new Set(),
-                });
+                activeDataMap.set(deviceId, { totalDuration: 0, activeDates: new Set() });
               }
               const deviceData = activeDataMap.get(deviceId);
               if (device.duration_in_seconds === 0) {
@@ -211,19 +207,13 @@ const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
           });
 
           fetchProgressMap[projectId].completedPages += 1;
-          console.log(
-            `Completed Page for project ${projectId}: ${fetchProgressMap[projectId].completedPages}/${fetchProgressMap[projectId].totalPages}`
-          );
+          console.log(`Completed Page for project ${projectId}: ${fetchProgressMap[projectId].completedPages}/${fetchProgressMap[projectId].totalPages}`);
           await new Promise((resolve) => setTimeout(resolve, 1000));
           return;
         } catch (error) {
           if (error.response && error.response.status === 429) {
             retries++;
-            console.warn(
-              `Rate limit hit on page ${page} for project ${projectId}. Retrying in ${
-                delay / 1000
-              } seconds...`
-            );
+            console.warn(`Rate limit hit on page ${page} for project ${projectId}. Retrying in ${delay / 1000} seconds...`);
             await new Promise((resolve) => setTimeout(resolve, delay));
             delay *= backoffFactor;
           } else {
@@ -231,25 +221,14 @@ const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
           }
         }
       }
-      throw new Error(
-        `Failed to fetch page ${page} for project ${projectId} after ${maxRetries} retries due to rate limit.`
-      );
+      throw new Error(`Failed to fetch page ${page} for project ${projectId} after ${maxRetries} retries due to rate limit.`);
     };
 
     const batchSize = 10;
     const pageBatches = [];
-    for (
-      let i = 1;
-      i <= fetchProgressMap[projectId].totalPages;
-      i += batchSize
-    ) {
+    for (let i = 1; i <= fetchProgressMap[projectId].totalPages; i += batchSize) {
       const batch = Array.from(
-        {
-          length: Math.min(
-            batchSize,
-            fetchProgressMap[projectId].totalPages - i + 1
-          ),
-        },
+        { length: Math.min(batchSize, fetchProgressMap[projectId].totalPages - i + 1) },
         (_, index) => i + index
       );
       pageBatches.push(batch);
@@ -262,29 +241,17 @@ const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
       }
     }
 
-    const [existingDevices] = await connection.query(
-      `SELECT id FROM ${tableName}`
-    );
+    const [existingDevices] = await connection.query(`SELECT id FROM ${tableName}`);
     const existingDeviceIds = new Set(existingDevices.map((row) => row.id));
 
     const updates = [];
     for (const [deviceId, data] of activeDataMap.entries()) {
       const humanReadableDuration = convertToHumanReadable(data.totalDuration);
-      updates.push([
-        deviceId,
-        [...data.activeDates].join(", "),
-        humanReadableDuration,
-      ]);
+      updates.push([deviceId, [...data.activeDates].join(", "), humanReadableDuration]);
     }
 
-    const inactiveDevices = [...existingDeviceIds].filter(
-      (id) => !allDeviceIds.has(id)
-    );
-    const inactiveUpdates = inactiveDevices.map((id) => [
-      id,
-      "Not active",
-      "0 sec",
-    ]);
+    const inactiveDevices = [...existingDeviceIds].filter((id) => !allDeviceIds.has(id));
+    const inactiveUpdates = inactiveDevices.map((id) => [id, "Not active", "0 sec"]);
 
     if (updates.length > 0) {
       await connection.query(
@@ -303,16 +270,11 @@ const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
     }
 
     fetchProgressMap[projectId].isFetching = false;
-    await connection.end();
-    console.log(
-      `Active status data updated successfully for project ${projectId}!`
-    );
+    connection.release();
+    console.log(`Active status data updated successfully for project ${projectId}!`);
   } catch (error) {
     fetchProgressMap[projectId].isFetching = false;
-    console.error(
-      `Error fetching or storing active status data for project ${projectId}:`,
-      error.message
-    );
+    console.error(`Error fetching or storing active status data for project ${projectId}:`, error.message);
     throw error;
   }
 };
@@ -327,13 +289,7 @@ const convertToHumanReadable = (seconds) => {
 
 app.get("/api/devices/:projectId", async (req, res) => {
   const { projectId } = req.params;
-  const {
-    searchTerm = "",
-    page = 1,
-    limit = 10,
-    district = "All",
-    status = "All",
-  } = req.query;
+  const { searchTerm = "", page = 1, limit = 10, district = "All", status = "All" } = req.query;
   const offset = (page - 1) * limit;
   const tableName = `project_${projectId}_db`;
 
@@ -401,21 +357,14 @@ app.get("/api/devices/:projectId", async (req, res) => {
       totalPages,
     });
 
-    await connection.end();
+    connection.release();
   } catch (error) {
-    console.error(
-      `Error fetching devices for project ${projectId}:`,
-      error.message
-    );
-    res
-      .status(500)
-      .json({
-        error: `Failed to fetch devices from database for project ${projectId}`,
-      });
+    console.error(`Error fetching devices for project ${projectId}:`, error.message);
+    res.status(500).json({ error: `Failed to fetch devices from database for project ${projectId}` });
   }
 });
 
-app.get("/api/devices/:projectId", async (req, res) => {
+app.get("/api/all-devices/:projectId", async (req, res) => {
   const { projectId } = req.params;
   const { searchTerm = "", district = "All", status = "All" } = req.query;
   const tableName = `project_${projectId}_db`;
@@ -447,17 +396,10 @@ app.get("/api/devices/:projectId", async (req, res) => {
 
     const [devices] = await connection.query(query, params);
     res.json({ devices });
-    await connection.end();
+    connection.release();
   } catch (error) {
-    console.error(
-      `Error fetching all devices for project ${projectId}:`,
-      error.message
-    );
-    res
-      .status(500)
-      .json({
-        error: `Failed to fetch all devices from database for project ${projectId}`,
-      });
+    console.error(`Error fetching all devices for project ${projectId}:`, error.message);
+    res.status(500).json({ error: `Failed to fetch all devices from database for project ${projectId}` });
   }
 });
 
@@ -475,17 +417,10 @@ app.get("/api/device-stats/:projectId", async (req, res) => {
       `SELECT COUNT(*) AS total, SUM(connection_state = 'Active') AS active, SUM(connection_state = 'Inactive') AS inactive FROM ${tableName}`
     );
     res.json(stats);
-    await connection.end();
+    connection.release();
   } catch (error) {
-    console.error(
-      `Error fetching device stats for project ${projectId}:`,
-      error.message
-    );
-    res
-      .status(500)
-      .json({
-        error: `Failed to fetch device stats from database for project ${projectId}`,
-      });
+    console.error(`Error fetching device stats for project ${projectId}:`, error.message);
+    res.status(500).json({ error: `Failed to fetch device stats from database for project ${projectId}` });
   }
 });
 
@@ -498,18 +433,11 @@ app.get("/api/fetchProgress/:projectId", (req, res) => {
 
   const progress =
     fetchProgressMap[projectId].totalPages > 0
-      ? Math.min(
-          (fetchProgressMap[projectId].completedPages /
-            fetchProgressMap[projectId].totalPages) *
-            100,
-          100
-        )
+      ? Math.min((fetchProgressMap[projectId].completedPages / fetchProgressMap[projectId].totalPages) * 100, 100)
       : fetchProgressMap[projectId].isFetching
       ? 0
       : 100;
-  console.log(
-    `Progress API for project ${projectId}: ${progress}% (Completed: ${fetchProgressMap[projectId].completedPages}, Total: ${fetchProgressMap[projectId].totalPages})`
-  );
+  console.log(`Progress API for project ${projectId}: ${progress}% (Completed: ${fetchProgressMap[projectId].completedPages}, Total: ${fetchProgressMap[projectId].totalPages})`);
   res.json({
     isFetching: fetchProgressMap[projectId].isFetching,
     progress: progress.toFixed(2),
@@ -527,9 +455,7 @@ app.get("/api/fetchActiveStatusData/:projectId", async (req, res) => {
   }
 
   if (!fromDate || !toDate) {
-    return res
-      .status(400)
-      .json({ error: "Please provide both fromDate and toDate." });
+    return res.status(400).json({ error: "Please provide both fromDate and toDate." });
   }
 
   try {
@@ -538,19 +464,11 @@ app.get("/api/fetchActiveStatusData/:projectId", async (req, res) => {
     fetchProgressMap[projectId].totalPages = 0;
 
     await fetchAndStoreActiveStatusData(projectId, fromDate, toDate);
-    res.json({
-      message: `Active status data updated successfully for project ${projectId}!`,
-    });
+    res.json({ message: `Active status data updated successfully for project ${projectId}!` });
   } catch (error) {
     console.error(`Error in API for project ${projectId}:`, error.message);
-    res
-      .status(500)
-      .json({
-        error: `Failed to fetch or store active status data for project ${projectId}.`,
-      });
+    res.status(500).json({ error: `Failed to fetch or store active status data for project ${projectId}.` });
   }
 });
 
-app.listen(PORT, () =>
-  console.log(`Server running at http://localhost:${PORT}`)
-);
+app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
