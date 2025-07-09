@@ -89,7 +89,7 @@ const DeviceData = () => {
   const fetchData = async (page = currentPage) => {
     setLoading(true);
     try {
-      const response = await axios.get(`https://dashboard-ssa-production.up.railway.app/api/all-devices/${selectedProject}`, {
+      const response = await axios.get(`https://dashboard-ssa-production.up.railway.app/api/all-devices${selectedProject}`, {
         params: {
           searchTerm,
           page,
@@ -136,13 +136,13 @@ const DeviceData = () => {
     setIsFetching(true);
     setFetchProgress(0);
     try {
-      await axios.get(`https://dashboard-ssa-production.up.railway.app/api/fetchActiveStatusData/${selectedProject}`, {
+      await axios.get(`https://dashboard-ssa-production.up.railway.app/api/fetchActiveStatusData${selectedProject}`, {
         params: { fromDate: startDate, toDate: endDate },
       });
       const pollProgress = setInterval(async () => {
         try {
           const progressResponse = await axios.get(
-            `https://dashboard-ssa-production.up.railway.app/api/fetchProgress/${selectedProject}`
+            `https://dashboard-ssa-production.up.railway.app/api/fetchProgress${selectedProject}`
           );
           const { progress, isFetching, completedPages, totalPages } = progressResponse.data;
           setFetchProgress(parseFloat(progress));
@@ -193,7 +193,7 @@ const DeviceData = () => {
     try {
       setLoading(true);
       const response = await axios.get(
-        `https://dashboard-ssa-production.up.railway.app/api/all-devices/${selectedProject}`,
+        `https://dashboard-ssa-production.up.railway.app/api/all-devices${selectedProject}`,
         {
           params: {
             searchTerm,
