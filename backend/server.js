@@ -10,8 +10,8 @@ const PORT = process.env.PORT || 3006; // Use Railway's PORT or fallback to 3006
 const cache = new NodeCache({ stdTTL: 30 });
 
 const API_KEYS = {
-  "2228": process.env.API_KEY_2228,
-  "3570": process.env.API_KEY_3570,
+  "2228": "526906b4a7c546fcade5fc370ed6f94c",
+  "3570": "0f708bc142624a1ba8209359cb65d5b7"
 };
 
 app.use(
