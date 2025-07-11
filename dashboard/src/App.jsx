@@ -89,7 +89,7 @@ const DeviceData = () => {
   const fetchData = async (page = currentPage) => {
     setLoading(true);
     try {
-      const response = await axios.get(`https://dashboard-ssa-production.up.railway.app/api/all-devices${selectedProject}`, {
+      const response = await axios.get(`https://dashboard-ssa-production.up.railway.app/api/devices/${selectedProject}`, {
         params: {
           searchTerm,
           page,
@@ -101,17 +101,18 @@ const DeviceData = () => {
       const devices = response.data.devices || [];
       setData(devices);
       setFilteredData(devices);
-      setTotalDevices(response.data.totalDevices);
-      setActiveDevices(response.data.activeDevices);
-      setInactiveDevices(response.data.inactiveDevices);
-      setConnectedCount(response.data.connectedCount);
-      setNotConnectedCount(response.data.notConnectedCount);
-      setDistrictData(response.data.districtData);
-      setTotalPages(response.data.totalPages);
-      setCurrentPage(response.data.currentPage);
+      setTotalDevices(response.data.totalDevices || 0);
+      setActiveDevices(response.data.activeDevices || 0);
+      setInactiveDevices(response.data.inactiveDevices || 0);
+      setConnectedCount(response.data.connectedCount || 0);
+      setNotConnectedCount(response.data.notConnectedCount || 0);
+      setDistrictData(response.data.districtData || []);
+      setTotalPages(response.data.totalPages || 1);
+      setCurrentPage(response.data.currentPage || 1);
       setError(null);
     } catch (err) {
       setError("Failed to fetch data. Please try again later.");
+      setDistrictData([]);
     } finally {
       setLoading(false);
     }
@@ -136,13 +137,13 @@ const DeviceData = () => {
     setIsFetching(true);
     setFetchProgress(0);
     try {
-      await axios.get(`https://dashboard-ssa-production.up.railway.app/api/fetchActiveStatusData${selectedProject}`, {
+      await axios.get(`https://dashboard-ssa-production.up.railway.app/api/fetchActiveStatusData/${selectedProject}`, {
         params: { fromDate: startDate, toDate: endDate },
       });
       const pollProgress = setInterval(async () => {
         try {
           const progressResponse = await axios.get(
-            `https://dashboard-ssa-production.up.railway.app/api/fetchProgress${selectedProject}`
+            `https://dashboard-ssa-production.up.railway.app/api/fetchProgress/${selectedProject}`
           );
           const { progress, isFetching, completedPages, totalPages } = progressResponse.data;
           setFetchProgress(parseFloat(progress));
@@ -193,7 +194,7 @@ const DeviceData = () => {
     try {
       setLoading(true);
       const response = await axios.get(
-        `https://dashboard-ssa-production.up.railway.app/api/all-devices${selectedProject}`,
+        `https://dashboard-ssa-production.up.railway.app/api/all-devices/${selectedProject}`,
         {
           params: {
             searchTerm,
@@ -354,17 +355,21 @@ const DeviceData = () => {
             </span>
           </h4>
           <div style={styles.scrollable}>
-            {districtData.map((item, index) => (
-              <div key={index} style={styles.districtItem}>
-                <p style={styles.districtName}>
-                  <strong>{item.district}</strong>
-                </p>
-                <p style={styles.activeCount}>Connected: {item.connected}</p>
-                <p style={styles.inactiveCount}>
-                  Not Connected: {item.notConnected}
-                </p>
-              </div>
-            ))}
+            {Array.isArray(districtData) && districtData.length > 0 ? (
+              districtData.map((item, index) => (
+                <div key={index} style={styles.districtItem}>
+                  <p style={styles.districtName}>
+                    <strong>{item.district}</strong>
+                  </p>
+                  <p style={styles.activeCount}>Connected: {item.connected}</p>
+                  <p style={styles.inactiveCount}>
+                    Not Connected: {item.notConnected}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <p style={styles.noDataText}>No district data available.</p>
+            )}
           </div>
         </div>
       </div>
