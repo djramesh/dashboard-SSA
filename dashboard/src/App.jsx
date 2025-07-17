@@ -274,7 +274,7 @@ const DeviceData = () => {
           style={styles.dropdown}
         >
           <option value="2228">FY24-25 (Project 2228)</option>
-          <option value="3570">FY23-24 (Project 3570)</option>
+          <option value="3570">FY23-24 (Project 3580)</option>
         </select>
       </div>
       <h1 style={styles.header}>Dashboard of Assam Smart Classroom Project</h1>
