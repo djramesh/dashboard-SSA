@@ -116,7 +116,7 @@ const fetchAndStoreData = async (projectId) => {
         device.device.connection_status || "N/A",
         device.device.device_status || "N/A",
         device.device.custom_properties.find((prop) => prop.name === "HM Name")?.value || "N/A",
-        device.device.custom_properties.find((prop) => prop.name === "HM Contact Number")?.value || "N/A",
+        device.device.custom_properties.find((prop) => prop.name === "HM Contact Number" || "HM Contact no")?.value || "N/A",
       ]);
 
       await connection.query(
