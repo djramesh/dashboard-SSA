@@ -98,7 +98,7 @@ const fetchAndStoreData = async (projectId) => {
 
   let nextCursor = null;
   try {
-    const connection = await mysql.createConnection(urlDB);
+    const connection = await dbPool.getConnection();
     do {
       const response = await axios.get(apiUrl, {
         params: { cursor: nextCursor },
