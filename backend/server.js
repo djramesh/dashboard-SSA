@@ -157,7 +157,6 @@ const fetchAndStoreData = async (projectId) => {
     );
   }
 };
-
 setInterval(() => fetchAndStoreData("2228"), 5 * 60 * 1000);
 setInterval(() => fetchAndStoreData("3570"), 5 * 60 * 1000);
 fetchAndStoreData("2228");
