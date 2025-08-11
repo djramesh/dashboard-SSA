@@ -450,7 +450,7 @@ const DeviceData = () => {
                   "S.No",
                   "ID",
                   "Name",
-                  "UDISE Code",
+                  "UDISE code",
                   "District",
                   "Block",
                   "Last Seen On",
