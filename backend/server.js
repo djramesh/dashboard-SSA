@@ -85,9 +85,9 @@ initializeDatabase().catch((err) =>
 const fetchAndStoreData = async (projectId) => {
   const tableName = `project_${projectId}_db`;
   const apiUrl =
-    projectId === "3570"
-      ? `https://api.scalefusion.com/api/v2/devices.json?device_group_id=149219`
-      : `https://api-in.scalefusion.com/api/v2/devices.json`;
+    projectId === "2228"
+      ?`https://api-in.scalefusion.com/api/v2/devices.json` 
+      : `https://api.scalefusion.com/api/v2/devices.json?device_group_id=149219`;
   const apiKey = API_KEYS[projectId];
 
   if (!apiKey) {
@@ -97,43 +97,64 @@ const fetchAndStoreData = async (projectId) => {
 
   let nextCursor = null;
   try {
-    const connection = await dbPool.getConnection();
+    const connection = await mysql.createConnection(urlDB);
     do {
       const response = await axios.get(apiUrl, {
         params: { cursor: nextCursor },
         headers: { Authorization: `Token ${apiKey}` },
       });
 
-      const devices = response.data.devices.map((device) => [
-        device.device.id,
-        device.device.name,
-        device.device.custom_properties.find((prop) => prop.name === "District")?.value || "N/A",
-        device.device.custom_properties.find((prop) => prop.name === "Block")?.value || "N/A",
-        device.device.power_on_time || null,
-        device.device.power_off_time || null,
-        device.device.last_seen_on || null,
-        device.device.connection_state || "N/A",
-        device.device.connection_status || "N/A",
-        device.device.device_status || "N/A",
-        device.device.custom_properties.find((prop) => prop.name === "HM Name")?.value || "N/A",
-        device.device.custom_properties.find((prop) => prop.name === "HM Contact Number" )?.value || "N/A",
-      ]);
+      const devices = response.data.devices.map((device) => {
+        const baseDevice = [
+          device.device.id,
+          device.device.name,
+          device.device.custom_properties.find((prop) => prop.name === "District")?.value || "N/A",
+          device.device.custom_properties.find((prop) => prop.name === "Block")?.value || "N/A",
+          device.device.power_on_time || null,
+          device.device.power_off_time || null,
+          device.device.last_seen_on || null,
+          device.device.connection_state || "N/A",
+          device.device.connection_status || "N/A",
+          device.device.device_status || "N/A",
+          device.device.custom_properties.find((prop) => prop.name === "HM Name")?.value || "N/A",
+          device.device.custom_properties.find((prop) => prop.name === "HM Contact Number")?.value || "N/A",
+        ];
+
+        // Include udise only for project 2228
+        if (projectId === "2228") {
+          baseDevice.splice(2, 0, device.device.custom_properties.find((prop) => prop.name === "Udise Code")?.value || "N/A");
+        }
+
+        return baseDevice;
+      });
+
+      // Define columns for the INSERT query based on projectId
+      const columns =
+        projectId === "2228"
+          ? `(id, name, udise, district, block, power_on_time, power_off_time, last_seen_on, connection_state, connection_status, device_status, hm_name, hm_contact_numbers)`
+          : `(id, name, district, block, power_on_time, power_off_time, last_seen_on, connection_state, connection_status, device_status, hm_name, hm_contact_numbers)`;
+
+      // Define columns for the ON DUPLICATE KEY UPDATE clause
+      const updateColumns =
+        projectId === "2228"
+          ? `name = VALUES(name), udise = VALUES(udise), district = VALUES(district), block = VALUES(block), power_on_time = VALUES(power_on_time), power_off_time = VALUES(power_off_time), last_seen_on = VALUES(last_seen_on), connection_state = VALUES(connection_state), connection_status = VALUES(connection_status), device_status = VALUES(device_status), hm_name = VALUES(hm_name), hm_contact_numbers = VALUES(hm_contact_numbers)`
+          : `name = VALUES(name), district = VALUES(district), block = VALUES(block), power_on_time = VALUES(power_on_time), power_off_time = VALUES(power_off_time), last_seen_on = VALUES(last_seen_on), connection_state = VALUES(connection_state), connection_status = VALUES(connection_status), device_status = VALUES(device_status), hm_name = VALUES(hm_name), hm_contact_numbers = VALUES(hm_contact_numbers)`;
 
       await connection.query(
-        `INSERT INTO ${tableName} (id, name, district, block, power_on_time, power_off_time, last_seen_on, connection_state, connection_status, device_status, hm_name, hm_contact_numbers)
+        `INSERT INTO ${tableName} ${columns}
          VALUES ?
          ON DUPLICATE KEY UPDATE 
-         name = VALUES(name), district = VALUES(district), block = VALUES(block), power_on_time = VALUES(power_on_time),
-         power_off_time = VALUES(power_off_time), last_seen_on = VALUES(last_seen_on), connection_state = VALUES(connection_state),
-         connection_status = VALUES(connection_status), device_status = VALUES(device_status), hm_name = VALUES(hm_name),
-         hm_contact_numbers = VALUES(hm_contact_numbers)`,
+         ${updateColumns}`,
         [devices]
       );
       nextCursor = response.data.next_cursor;
     } while (nextCursor);
-    connection.release();
+    await connection.end();
   } catch (error) {
-    console.error(`Error fetching or storing data for project ${projectId}:`, error.message);
+    console.error(
+      `Error fetching or storing data for project ${projectId}:`,
+      error.message
+    );
   }
 };
 

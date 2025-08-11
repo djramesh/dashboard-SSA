@@ -450,6 +450,7 @@ const DeviceData = () => {
                   "S.No",
                   "ID",
                   "Name",
+                  "UDISE Code",
                   "District",
                   "Block",
                   "Last Seen On",
@@ -476,6 +477,7 @@ const DeviceData = () => {
                   </td>
                   <td style={styles.tableData}>{item.id}</td>
                   <td style={styles.tableData}>{item.name}</td>
+                  <td style={styles.tableData}>{item.udise}</td>
                   <td style={styles.tableData}>{item.district}</td>
                   <td style={styles.tableData}>{item.block}</td>
                   <td style={styles.tableData}>
