@@ -40,9 +40,10 @@ const fetchProgressMap = {
 const initializeDatabase = async () => {
   const connection = await dbPool.getConnection();
   await connection.execute(`
-    CREATE TABLE IF NOT EXISTS project_2228_db (
+   CREATE TABLE IF NOT EXISTS project_2228_db (
       id INT PRIMARY KEY,
       name VARCHAR(255),
+      udise VARCHAR(255),
       district VARCHAR(255),
       block VARCHAR(255),
       power_on_time VARCHAR(50),
