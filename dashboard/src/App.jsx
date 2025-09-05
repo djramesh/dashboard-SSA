@@ -26,6 +26,33 @@ const formatDateTime = (isoDate) => {
   )}:${minutes}:${seconds}${amPm}`;
 };
 
+// Helper function to convert duration (e.g., "2h 30m 15s") to seconds
+const convertToSeconds = (duration) => {
+  if (!duration || typeof duration !== "string") return 0;
+
+  let totalSeconds = 0;
+  const regex = /(\d+h)?\s*(\d+m)?\s*(\d+s)?/;
+  const matches = duration.match(regex);
+
+  if (!matches) return 0;
+
+  // Extract hours, minutes, and seconds
+  if (matches[1]) {
+    const hours = parseInt(matches[1].replace("h", ""));
+    totalSeconds += hours * 3600;
+  }
+  if (matches[2]) {
+    const minutes = parseInt(matches[2].replace("m", ""));
+    totalSeconds += minutes * 60;
+  }
+  if (matches[3]) {
+    const seconds = parseInt(matches[3].replace("s", ""));
+    totalSeconds += seconds;
+  }
+
+  return totalSeconds;
+};
+
 const districtsOfAssam = [
   "BAJALI",
   "BAKSA",
@@ -205,7 +232,10 @@ const DeviceData = () => {
       );
       const allDevices = response.data.devices || [];
       const sanitizedData = allDevices.map(
-        ({ hm_contact_number, ...rest }) => rest
+        ({ hm_contact_number, ...rest }) => ({
+          ...rest,
+          total_active_duration_seconds: convertToSeconds(rest.total_active_duration), // Add seconds column
+        })
       );
       const ws = XLSX.utils.json_to_sheet(sanitizedData);
       const wb = XLSX.utils.book_new();
@@ -457,6 +487,7 @@ const DeviceData = () => {
                   "Live Connection State",
                   "Active Dates",
                   "Total Active Duration",
+                  "Total Active Duration (Seconds)", // New column
                   "HM Name",
                   "HM Contact No.",
                 ].map((header) => (
@@ -497,6 +528,7 @@ const DeviceData = () => {
                   </td>
                   <td style={styles.tableData}>{item.active_dates}</td>
                   <td style={styles.tableData}>{item.total_active_duration}</td>
+                  <td style={styles.tableData}>{convertToSeconds(item.total_active_duration)}</td> {/* New column */}
                   <td style={styles.tableData}>{item.hm_name}</td>
                   <td style={styles.tableData}>{item.hm_contact_numbers}</td>
                 </tr>

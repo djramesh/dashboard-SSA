@@ -126,6 +126,8 @@ const fetchAndStoreData = async (projectId) => {
           baseDevice.splice(2, 0, device.device.custom_properties.find((prop) => prop.name === "Udise Code")?.value || "N/A");
         }
 
+        
+
         return baseDevice;
       });
 
