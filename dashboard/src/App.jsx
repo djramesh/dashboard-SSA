@@ -36,7 +36,6 @@ const convertToSeconds = (duration) => {
 
   if (!matches) return 0;
 
-  // Extract hours, minutes, and seconds
   if (matches[1]) {
     const hours = parseInt(matches[1].replace("h", ""));
     totalSeconds += hours * 3600;
@@ -487,7 +486,7 @@ const DeviceData = () => {
                   "Live Connection State",
                   "Active Dates",
                   "Total Active Duration",
-                  "Total Active Duration (Seconds)", // New column
+                  "Total Active Duration (Seconds)", // Displays total_active_duration in seconds
                   "HM Name",
                   "HM Contact No.",
                 ].map((header) => (
@@ -528,7 +527,7 @@ const DeviceData = () => {
                   </td>
                   <td style={styles.tableData}>{item.active_dates}</td>
                   <td style={styles.tableData}>{item.total_active_duration}</td>
-                  <td style={styles.tableData}>{convertToSeconds(item.total_active_duration)}</td> {/* New column */}
+                  <td style={styles.tableData}>{convertToSeconds(item.total_active_duration)}</td>
                   <td style={styles.tableData}>{item.hm_name}</td>
                   <td style={styles.tableData}>{item.hm_contact_numbers}</td>
                 </tr>
