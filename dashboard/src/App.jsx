@@ -26,26 +26,38 @@ const formatDateTime = (isoDate) => {
   )}:${minutes}:${seconds}${amPm}`;
 };
 
-// Helper function to convert duration (e.g., "2h 30m 15s") to seconds
+// Helper function to convert duration (e.g., "5 hr 2 min 45 sec") to seconds
 const convertToSeconds = (duration) => {
   if (!duration || typeof duration !== "string") return 0;
 
   let totalSeconds = 0;
-  const regex = /(\d+h)?\s*(\d+m)?\s*(\d+s)?/;
+  const regex = /(\d+)\s*hr\s*(\d+)\s*min\s*(\d+)\s*sec|(\d+)\s*hr\s*(\d+)\s*min|(\d+)\s*min\s*(\d+)\s*sec|(\d+)\s*sec/;
   const matches = duration.match(regex);
 
   if (!matches) return 0;
 
-  if (matches[1]) {
-    const hours = parseInt(matches[1].replace("h", ""));
-    totalSeconds += hours * 3600;
+  // Match full format: "X hr Y min Z sec"
+  if (matches[1] && matches[2] && matches[3]) {
+    const hours = parseInt(matches[1]);
+    const minutes = parseInt(matches[2]);
+    const seconds = parseInt(matches[3]);
+    totalSeconds += hours * 3600 + minutes * 60 + seconds;
   }
-  if (matches[2]) {
-    const minutes = parseInt(matches[2].replace("m", ""));
-    totalSeconds += minutes * 60;
+  // Match "X hr Y min"
+  else if (matches[4] && matches[5]) {
+    const hours = parseInt(matches[4]);
+    const minutes = parseInt(matches[5]);
+    totalSeconds += hours * 3600 + minutes * 60;
   }
-  if (matches[3]) {
-    const seconds = parseInt(matches[3].replace("s", ""));
+  // Match "X min Y sec"
+  else if (matches[6] && matches[7]) {
+    const minutes = parseInt(matches[6]);
+    const seconds = parseInt(matches[7]);
+    totalSeconds += minutes * 60 + seconds;
+  }
+  // Match "X sec"
+  else if (matches[8]) {
+    const seconds = parseInt(matches[8]);
     totalSeconds += seconds;
   }
 
@@ -486,7 +498,7 @@ const DeviceData = () => {
                   "Live Connection State",
                   "Active Dates",
                   "Total Active Duration",
-                  "Total Active Duration (Seconds)", // Displays total_active_duration in seconds
+                  "Total Active Duration (Seconds)",
                   "HM Name",
                   "HM Contact No.",
                 ].map((header) => (
