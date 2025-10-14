@@ -185,12 +185,15 @@ const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
 
     fetchProgressMap[projectId].isFetching = true;
     fetchProgressMap[projectId].completedPages = 0;
+    fetchProgressMap[projectId].totalPages = 1; // Fallback to 1 to avoid division by zero
 
+    console.log(`Fetching first page for project ${projectId}...`);
     const firstResponse = await axios.get(apiUrl, {
       params: { from_date: fromDate, to_date: toDate, page: 1 },
       headers: { Authorization: `Token ${apiKey}` },
     });
 
+    console.log(`First response data for project ${projectId}:`, firstResponse.data);
     fetchProgressMap[projectId].totalPages = firstResponse.data.total_pages || 1;
     console.log(`Total Pages for project ${projectId}: ${fetchProgressMap[projectId].totalPages}`);
 
@@ -198,10 +201,11 @@ const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
       let retries = 0;
       const maxRetries = 5;
       const backoffFactor = 2;
-      let delay = 1000;
+      let delay = 2000; // Increased initial delay to avoid rate limits
 
       while (retries < maxRetries) {
         try {
+          console.log(`Fetching page ${page} for project ${projectId}...`);
           const response = await axios.get(apiUrl, {
             params: { from_date: fromDate, to_date: toDate, page },
             headers: { Authorization: `Token ${apiKey}` },
@@ -230,24 +234,30 @@ const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
           });
 
           fetchProgressMap[projectId].completedPages += 1;
-          console.log(`Completed Page for project ${projectId}: ${fetchProgressMap[projectId].completedPages}/${fetchProgressMap[projectId].totalPages}`);
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+          console.log(
+            `Completed Page for project ${projectId}: ${fetchProgressMap[projectId].completedPages}/${fetchProgressMap[projectId].totalPages}`
+          );
           return;
         } catch (error) {
           if (error.response && error.response.status === 429) {
             retries++;
-            console.warn(`Rate limit hit on page ${page} for project ${projectId}. Retrying in ${delay / 1000} seconds...`);
+            console.warn(
+              `Rate limit hit on page ${page} for project ${projectId}. Retrying in ${delay / 1000} seconds...`
+            );
             await new Promise((resolve) => setTimeout(resolve, delay));
             delay *= backoffFactor;
           } else {
+            console.error(`Error fetching page ${page} for project ${projectId}:`, error.message);
             throw error;
           }
         }
       }
-      throw new Error(`Failed to fetch page ${page} for project ${projectId} after ${maxRetries} retries due to rate limit.`);
+      throw new Error(
+        `Failed to fetch page ${page} for project ${projectId} after ${maxRetries} retries due to rate limit.`
+      );
     };
 
-    const batchSize = 15; // Increased from 10
+    const batchSize = 10; // Reduced batch size to avoid rate limits
     const pageBatches = [];
     for (let i = 1; i <= fetchProgressMap[projectId].totalPages; i += batchSize) {
       const batch = Array.from(
@@ -259,9 +269,7 @@ const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
 
     for (const batch of pageBatches) {
       await Promise.all(batch.map((page) => processPage(page)));
-      if (batch.length === batchSize) {
-        await new Promise((resolve) => setTimeout(resolve, 1500)); // Reduced delay
-      }
+      await new Promise((resolve) => setTimeout(resolve, 2000)); // Increased delay between batches
     }
 
     const [existingDevices] = await connection.query(`SELECT id FROM ${tableName}`);
@@ -293,8 +301,9 @@ const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
     }
 
     fetchProgressMap[projectId].isFetching = false;
-    connection.release();
+    fetchProgressMap[projectId].completedPages = fetchProgressMap[projectId].totalPages; // Ensure completedPages matches totalPages
     console.log(`Active status data updated successfully for project ${projectId}!`);
+    connection.release();
   } catch (error) {
     fetchProgressMap[projectId].isFetching = false;
     console.error(`Error fetching or storing active status data for project ${projectId}:`, error.message);

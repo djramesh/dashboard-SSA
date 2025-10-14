@@ -167,57 +167,63 @@ const DeviceData = () => {
   };
 
   const handleFetchData = async () => {
-    if (!startDate || !endDate) {
-      alert("Please select both start and end dates.");
-      return;
-    }
-    setLoading(true);
-    setIsFetching(true);
-    setFetchProgress(0);
-    try {
-      await axios.get(`https://dashboard-ssa-production.up.railway.app/api/fetchActiveStatusData/${selectedProject}`, {
+  if (!startDate || !endDate) {
+    alert("Please select both start and end dates.");
+    return;
+  }
+  setLoading(true);
+  setIsFetching(true);
+  setFetchProgress(0);
+  try {
+    await axios.get(
+      `https://dashboard-ssa-production.up.railway.app/api/fetchActiveStatusData/${selectedProject}`,
+      {
         params: { fromDate: startDate, toDate: endDate },
-      });
-      let pollCount = 0;
-      const maxPolls = 120; // 1 minute at 500ms interval
-      const pollProgress = setInterval(async () => {
-        pollCount++;
-        if (pollCount > maxPolls) {
+      }
+    );
+    let pollCount = 0;
+    const maxPolls = 240; // Increased to 2 minutes (240 * 500ms)
+    const pollProgress = setInterval(async () => {
+      pollCount++;
+      if (pollCount > maxPolls) {
+        clearInterval(pollProgress);
+        setIsFetching(false);
+        setLoading(false);
+        alert("Data fetching timed out. Please try again.");
+        return;
+      }
+      try {
+        const progressResponse = await axios.get(
+          `https://dashboard-ssa-production.up.railway.app/api/fetchProgress/${selectedProject}`
+        );
+        const { progress, isFetching, completedPages, totalPages } = progressResponse.data;
+        console.log(
+          `Progress Response: progress=${progress}%, isFetching=${isFetching}, completedPages=${completedPages}, totalPages=${totalPages}`
+        );
+        setFetchProgress(parseFloat(progress));
+        setIsFetching(isFetching);
+        if (!isFetching && progress >= 100) {
           clearInterval(pollProgress);
+          await fetchData(1);
           setIsFetching(false);
           setLoading(false);
-          alert("Data fetching timed out. Please try again.");
-          return;
+          alert("Data fetched successfully!");
         }
-        try {
-          const progressResponse = await axios.get(
-            `https://dashboard-ssa-production.up.railway.app/api/fetchProgress/${selectedProject}`
-          );
-          const { progress, isFetching, completedPages, totalPages } = progressResponse.data;
-          setFetchProgress(parseFloat(progress));
-          setIsFetching(isFetching);
-          if (!isFetching && progress >= 100) {
-            clearInterval(pollProgress);
-            await fetchData(1);
-            setIsFetching(false);
-            setLoading(false);
-            alert("Data fetched successfully!");
-          }
-        } catch (error) {
-          console.error("Polling error:", error.message);
-          clearInterval(pollProgress);
-          setIsFetching(false);
-          setLoading(false);
-          alert("Polling failed");
-        }
-      }, 500);
-    } catch (error) {
-      console.error("Error in fetchActiveStatusData:", error.message);
-      setIsFetching(false);
-      setLoading(false);
-      alert("Error fetching data");
-    }
-  };
+      } catch (error) {
+        console.error("Polling error:", error.message);
+        clearInterval(pollProgress);
+        setIsFetching(false);
+        setLoading(false);
+        alert("Polling failed");
+      }
+    }, 500);
+  } catch (error) {
+    console.error("Error in fetchActiveStatusData:", error.message);
+    setIsFetching(false);
+    setLoading(false);
+    alert("Error fetching data");
+  }
+};
 
   const handleFilter = (status) => {
     if (status === "all") {
