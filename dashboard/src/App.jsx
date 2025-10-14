@@ -178,7 +178,17 @@ const DeviceData = () => {
       await axios.get(`https://dashboard-ssa-production.up.railway.app/api/fetchActiveStatusData/${selectedProject}`, {
         params: { fromDate: startDate, toDate: endDate },
       });
+      let pollCount = 0;
+      const maxPolls = 120; // 1 minute at 500ms interval
       const pollProgress = setInterval(async () => {
+        pollCount++;
+        if (pollCount > maxPolls) {
+          clearInterval(pollProgress);
+          setIsFetching(false);
+          setLoading(false);
+          alert("Data fetching timed out. Please try again.");
+          return;
+        }
         try {
           const progressResponse = await axios.get(
             `https://dashboard-ssa-production.up.railway.app/api/fetchProgress/${selectedProject}`

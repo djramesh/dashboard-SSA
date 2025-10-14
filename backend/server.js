@@ -87,7 +87,7 @@ const fetchAndStoreData = async (projectId) => {
   const tableName = `project_${projectId}_db`;
   const apiUrl =
     projectId === "2228"
-      ?`https://api-in.scalefusion.com/api/v2/devices.json` 
+      ? `https://api-in.scalefusion.com/api/v2/devices.json`
       : `https://api.scalefusion.com/api/v2/devices.json?device_group_id=149219`;
   const apiKey = API_KEYS[projectId];
 
@@ -126,7 +126,7 @@ const fetchAndStoreData = async (projectId) => {
           baseDevice.splice(2, 0, device.device.custom_properties.find((prop) => prop.name === "Udise Code")?.value || "N/A");
         }
 
-        
+
 
         return baseDevice;
       });
@@ -247,7 +247,7 @@ const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
       throw new Error(`Failed to fetch page ${page} for project ${projectId} after ${maxRetries} retries due to rate limit.`);
     };
 
-    const batchSize = 10;
+    const batchSize = 15; // Increased from 10
     const pageBatches = [];
     for (let i = 1; i <= fetchProgressMap[projectId].totalPages; i += batchSize) {
       const batch = Array.from(
@@ -260,7 +260,7 @@ const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
     for (const batch of pageBatches) {
       await Promise.all(batch.map((page) => processPage(page)));
       if (batch.length === batchSize) {
-        await new Promise((resolve) => setTimeout(resolve, 3000));
+        await new Promise((resolve) => setTimeout(resolve, 1500)); // Reduced delay
       }
     }
 
@@ -458,8 +458,8 @@ app.get("/api/fetchProgress/:projectId", (req, res) => {
     fetchProgressMap[projectId].totalPages > 0
       ? Math.min((fetchProgressMap[projectId].completedPages / fetchProgressMap[projectId].totalPages) * 100, 100)
       : fetchProgressMap[projectId].isFetching
-      ? 0
-      : 100;
+        ? 0
+        : 100;
   console.log(`Progress API for project ${projectId}: ${progress}% (Completed: ${fetchProgressMap[projectId].completedPages}, Total: ${fetchProgressMap[projectId].totalPages})`);
   res.json({
     isFetching: fetchProgressMap[projectId].isFetching,
