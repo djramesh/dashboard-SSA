@@ -166,7 +166,7 @@ const DeviceData = () => {
     }
   };
 
-  const handleFetchData = async () => {
+const handleFetchData = async () => {
   if (!startDate || !endDate) {
     alert("Please select both start and end dates.");
     return;
@@ -182,14 +182,14 @@ const DeviceData = () => {
       }
     );
     let pollCount = 0;
-    const maxPolls = 240; // Increased to 2 minutes (240 * 500ms)
+    const maxPolls = 1200; // Increased to 10 minutes (1200 * 500ms)
     const pollProgress = setInterval(async () => {
       pollCount++;
       if (pollCount > maxPolls) {
         clearInterval(pollProgress);
         setIsFetching(false);
         setLoading(false);
-        alert("Data fetching timed out. Please try again.");
+        alert("Data fetching timed out after 10 minutes. Please try again.");
         return;
       }
       try {
@@ -198,11 +198,11 @@ const DeviceData = () => {
         );
         const { progress, isFetching, completedPages, totalPages } = progressResponse.data;
         console.log(
-          `Progress Response: progress=${progress}%, isFetching=${isFetching}, completedPages=${completedPages}, totalPages=${totalPages}`
+          `Client Progress Update: ${progress}% | isFetching: ${isFetching} | Pages: ${completedPages}/${totalPages}`
         );
-        setFetchProgress(parseFloat(progress));
+        setFetchProgress(parseFloat(progress) || 0); // Fallback to 0 if NaN
         setIsFetching(isFetching);
-        if (!isFetching && progress >= 100) {
+        if (!isFetching && parseFloat(progress) >= 100) {
           clearInterval(pollProgress);
           await fetchData(1);
           setIsFetching(false);

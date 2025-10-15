@@ -193,11 +193,11 @@ const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
       headers: { Authorization: `Token ${apiKey}` },
     });
 
-    // console.log(`First response data for project ${projectId}:`, firstResponse.data);
+    console.log(`First response data for project ${projectId}:`, firstResponse.data);
     fetchProgressMap[projectId].totalPages = firstResponse.data.total_pages || 1;
     console.log(`Total Pages for project ${projectId}: ${fetchProgressMap[projectId].totalPages}`);
 
-    // Process first page data (fix: no re-fetch)
+    // Process first page data
     const devices = firstResponse.data.devices || [];
     devices.forEach((device) => {
       const deviceId = device.device_id;
@@ -225,8 +225,7 @@ const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
     const processPage = async (page) => {
       let retries = 0;
       const maxRetries = 5;
-      const backoffFactor = 2;
-      let delay = 1000; // Reduced initial delay
+      let delay = 1000;
 
       while (retries < maxRetries) {
         try {
@@ -270,7 +269,7 @@ const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
               `Rate limit hit on page ${page} for project ${projectId}. Retrying in ${delay / 1000} seconds...`
             );
             await new Promise((resolve) => setTimeout(resolve, delay));
-            delay *= backoffFactor;
+            delay *= 2; // Exponential backoff
           } else {
             console.error(`Error fetching page ${page} for project ${projectId}:`, error.message);
             throw error;
@@ -282,9 +281,9 @@ const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
       );
     };
 
-    const batchSize = 5; // Reduced to avoid rate limits
+    const batchSize = 5;
     const pageBatches = [];
-    for (let i = 2; i <= fetchProgressMap[projectId].totalPages; i += batchSize) { // Start from page 2
+    for (let i = 2; i <= fetchProgressMap[projectId].totalPages; i += batchSize) {
       const batch = Array.from(
         { length: Math.min(batchSize, fetchProgressMap[projectId].totalPages - i + 1) },
         (_, index) => i + index
@@ -294,15 +293,45 @@ const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
 
     for (const batch of pageBatches) {
       await Promise.all(batch.map((page) => processPage(page)));
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Reduced delay between batches
+      // Optional: Force update progress endpoint after each batch
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Small delay between batches
+    }
+
+    // Rest of the function (updates, inactive, etc.) remains same
+    const [existingDevices] = await connection.query(`SELECT id FROM ${tableName}`);
+    const existingDeviceIds = new Set(existingDevices.map((row) => row.id));
+
+    const updates = [];
+    for (const [deviceId, data] of activeDataMap.entries()) {
+      const humanReadableDuration = convertToHumanReadable(data.totalDuration);
+      updates.push([deviceId, [...data.activeDates].join(", "), humanReadableDuration]);
+    }
+
+    const inactiveDevices = [...existingDeviceIds].filter((id) => !allDeviceIds.has(id));
+    const inactiveUpdates = inactiveDevices.map((id) => [id, "Not active", "0 sec"]);
+
+    if (updates.length > 0) {
+      await connection.query(
+        `INSERT INTO ${tableName} (id, active_dates, total_active_duration) VALUES ?
+         ON DUPLICATE KEY UPDATE active_dates = VALUES(active_dates), total_active_duration = VALUES(total_active_duration)`,
+        [updates]
+      );
+    }
+
+    if (inactiveUpdates.length > 0) {
+      await connection.query(
+        `INSERT INTO ${tableName} (id, active_dates, total_active_duration) VALUES ?
+         ON DUPLICATE KEY UPDATE active_dates = VALUES(active_dates), total_active_duration = VALUES(total_active_duration)`,
+        [inactiveUpdates]
+      );
     }
 
     fetchProgressMap[projectId].isFetching = false;
     if (fetchProgressMap[projectId].completedPages < fetchProgressMap[projectId].totalPages) {
-      fetchProgressMap[projectId].completedPages = fetchProgressMap[projectId].totalPages; // Force 100% if done
+      fetchProgressMap[projectId].completedPages = fetchProgressMap[projectId].totalPages; // Ensure 100%
     }
     console.log(`Active status data updated successfully for project ${projectId}!`);
-    activeDataMap.clear(); // Clear memory
+    activeDataMap.clear();
     allDeviceIds.clear();
     connection.release();
   } catch (error) {
