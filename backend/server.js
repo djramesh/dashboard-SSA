@@ -193,7 +193,7 @@ const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
       headers: { Authorization: `Token ${apiKey}` },
     });
 
-    console.log(`First response data for project ${projectId}:`, firstResponse.data);
+    // console.log(`First response data for project ${projectId}:`, firstResponse.data);
     fetchProgressMap[projectId].totalPages = firstResponse.data.total_pages || 1;
     console.log(`Total Pages for project ${projectId}: ${fetchProgressMap[projectId].totalPages}`);
 
