@@ -182,14 +182,14 @@ const handleFetchData = async () => {
       }
     );
     let pollCount = 0;
-    const maxPolls = 1200; // Increased to 10 minutes (1200 * 500ms)
+    const maxPolls = 2400; // Increased to 20 minutes (2400 * 500ms)
     const pollProgress = setInterval(async () => {
       pollCount++;
       if (pollCount > maxPolls) {
         clearInterval(pollProgress);
         setIsFetching(false);
         setLoading(false);
-        alert("Data fetching timed out after 10 minutes. Please try again.");
+        alert("Data fetching timed out after 20 minutes. Please try again.");
         return;
       }
       try {
@@ -198,11 +198,15 @@ const handleFetchData = async () => {
         );
         const { progress, isFetching, completedPages, totalPages } = progressResponse.data;
         console.log(
-          `Client Progress Update: ${progress}% | isFetching: ${isFetching} | Pages: ${completedPages}/${totalPages}`
+          `Client Progress: ${progress}% | isFetching: ${isFetching} | Pages: ${completedPages}/${totalPages}`
         );
-        setFetchProgress(parseFloat(progress) || 0); // Fallback to 0 if NaN
+        if (progressResponse.data && typeof progress === "number") {
+          setFetchProgress(progress);
+        } else {
+          console.warn("Invalid progress response:", progressResponse.data);
+        }
         setIsFetching(isFetching);
-        if (!isFetching && parseFloat(progress) >= 100) {
+        if (!isFetching && progress >= 100) {
           clearInterval(pollProgress);
           await fetchData(1);
           setIsFetching(false);
@@ -216,7 +220,7 @@ const handleFetchData = async () => {
         setLoading(false);
         alert("Polling failed");
       }
-    }, 500);
+    }, 1000); // Increased interval to 1 second
   } catch (error) {
     console.error("Error in fetchActiveStatusData:", error.message);
     setIsFetching(false);

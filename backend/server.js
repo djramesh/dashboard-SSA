@@ -493,18 +493,22 @@ app.get("/api/fetchProgress/:projectId", (req, res) => {
     return res.status(400).json({ error: "Invalid project ID" });
   }
 
+  const completed = fetchProgressMap[projectId].completedPages;
+  const total = fetchProgressMap[projectId].totalPages;
   const progress =
-    fetchProgressMap[projectId].totalPages > 0
-      ? Math.min((fetchProgressMap[projectId].completedPages / fetchProgressMap[projectId].totalPages) * 100, 100)
+    total > 0
+      ? Math.round((completed / total) * 100)
       : fetchProgressMap[projectId].isFetching
         ? 0
         : 100;
-  console.log(`Progress API for project ${projectId}: ${progress}% (Completed: ${fetchProgressMap[projectId].completedPages}, Total: ${fetchProgressMap[projectId].totalPages})`);
+  console.log(
+    `Progress Check for ${projectId}: Completed=${completed}, Total=${total}, Progress=${progress}%`
+  );
   res.json({
     isFetching: fetchProgressMap[projectId].isFetching,
-    progress: progress.toFixed(2),
-    completedPages: fetchProgressMap[projectId].completedPages,
-    totalPages: fetchProgressMap[projectId].totalPages,
+    progress: progress,
+    completedPages: completed,
+    totalPages: total,
   });
 });
 
