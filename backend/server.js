@@ -185,7 +185,7 @@ const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
 
     fetchProgressMap[projectId].isFetching = true;
     fetchProgressMap[projectId].completedPages = 0;
-    fetchProgressMap[projectId].totalPages = 1; // Fallback to 1 to avoid division by zero
+    fetchProgressMap[projectId].totalPages = 1; // Fallback
 
     console.log(`Fetching first page for project ${projectId}...`);
     const firstResponse = await axios.get(apiUrl, {
@@ -197,11 +197,36 @@ const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
     fetchProgressMap[projectId].totalPages = firstResponse.data.total_pages || 1;
     console.log(`Total Pages for project ${projectId}: ${fetchProgressMap[projectId].totalPages}`);
 
+    // Process first page data (fix: no re-fetch)
+    const devices = firstResponse.data.devices || [];
+    devices.forEach((device) => {
+      const deviceId = device.device_id;
+      const deviceName = device.device_name || "";
+      if (!deviceName.trim()) return;
+      allDeviceIds.add(deviceId);
+
+      if (device.availability_status === "active") {
+        const date = device.from_date.split(" ")[0];
+        if (!activeDataMap.has(deviceId)) {
+          activeDataMap.set(deviceId, { totalDuration: 0, activeDates: new Set() });
+        }
+        const deviceData = activeDataMap.get(deviceId);
+        if (device.duration_in_seconds === 0) {
+          deviceData.totalDuration += 1;
+        } else if (device.duration_in_seconds <= 99999) {
+          deviceData.totalDuration += device.duration_in_seconds;
+        }
+        deviceData.activeDates.add(date);
+      }
+    });
+    fetchProgressMap[projectId].completedPages += 1;
+    console.log(`Completed Page 1 for project ${projectId}: ${fetchProgressMap[projectId].completedPages}/${fetchProgressMap[projectId].totalPages}`);
+
     const processPage = async (page) => {
       let retries = 0;
       const maxRetries = 5;
       const backoffFactor = 2;
-      let delay = 2000; // Increased initial delay to avoid rate limits
+      let delay = 1000; // Reduced initial delay
 
       while (retries < maxRetries) {
         try {
@@ -257,9 +282,9 @@ const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
       );
     };
 
-    const batchSize = 10; // Reduced batch size to avoid rate limits
+    const batchSize = 5; // Reduced to avoid rate limits
     const pageBatches = [];
-    for (let i = 1; i <= fetchProgressMap[projectId].totalPages; i += batchSize) {
+    for (let i = 2; i <= fetchProgressMap[projectId].totalPages; i += batchSize) { // Start from page 2
       const batch = Array.from(
         { length: Math.min(batchSize, fetchProgressMap[projectId].totalPages - i + 1) },
         (_, index) => i + index
@@ -269,40 +294,16 @@ const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
 
     for (const batch of pageBatches) {
       await Promise.all(batch.map((page) => processPage(page)));
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // Increased delay between batches
-    }
-
-    const [existingDevices] = await connection.query(`SELECT id FROM ${tableName}`);
-    const existingDeviceIds = new Set(existingDevices.map((row) => row.id));
-
-    const updates = [];
-    for (const [deviceId, data] of activeDataMap.entries()) {
-      const humanReadableDuration = convertToHumanReadable(data.totalDuration);
-      updates.push([deviceId, [...data.activeDates].join(", "), humanReadableDuration]);
-    }
-
-    const inactiveDevices = [...existingDeviceIds].filter((id) => !allDeviceIds.has(id));
-    const inactiveUpdates = inactiveDevices.map((id) => [id, "Not active", "0 sec"]);
-
-    if (updates.length > 0) {
-      await connection.query(
-        `INSERT INTO ${tableName} (id, active_dates, total_active_duration) VALUES ?
-         ON DUPLICATE KEY UPDATE active_dates = VALUES(active_dates), total_active_duration = VALUES(total_active_duration)`,
-        [updates]
-      );
-    }
-
-    if (inactiveUpdates.length > 0) {
-      await connection.query(
-        `INSERT INTO ${tableName} (id, active_dates, total_active_duration) VALUES ?
-         ON DUPLICATE KEY UPDATE active_dates = VALUES(active_dates), total_active_duration = VALUES(total_active_duration)`,
-        [inactiveUpdates]
-      );
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Reduced delay between batches
     }
 
     fetchProgressMap[projectId].isFetching = false;
-    fetchProgressMap[projectId].completedPages = fetchProgressMap[projectId].totalPages; // Ensure completedPages matches totalPages
+    if (fetchProgressMap[projectId].completedPages < fetchProgressMap[projectId].totalPages) {
+      fetchProgressMap[projectId].completedPages = fetchProgressMap[projectId].totalPages; // Force 100% if done
+    }
     console.log(`Active status data updated successfully for project ${projectId}!`);
+    activeDataMap.clear(); // Clear memory
+    allDeviceIds.clear();
     connection.release();
   } catch (error) {
     fetchProgressMap[projectId].isFetching = false;
