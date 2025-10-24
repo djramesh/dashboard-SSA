@@ -107,11 +107,12 @@ const fetchAndStoreData = async (projectId) => {
         headers: { Authorization: `Token ${apiKey}` },
       });
 
+      // Replace the devices.map section in fetchAndStoreData function
       const devices = response.data.devices.map((device) => {
         const baseDevice = [
           device.device.id,
           device.device.name,
-          device.device.serial_no,
+          device.device.serial_no || "N/A", // Add serial_no here
           device.device.custom_properties.find((prop) => prop.name === "District")?.value || "N/A",
           device.device.custom_properties.find((prop) => prop.name === "Block")?.value || "N/A",
           device.device.power_on_time || null,
@@ -126,25 +127,23 @@ const fetchAndStoreData = async (projectId) => {
 
         // Include udise only for project 2228
         if (projectId === "2228") {
-          baseDevice.splice(2, 0, device.device.custom_properties.find((prop) => prop.name === "Udise Code")?.value || "N/A");
+          baseDevice.splice(3, 0, device.device.custom_properties.find((prop) => prop.name === "Udise Code")?.value || "N/A");
         }
-
-        console.log(serial_no);
 
         return baseDevice;
       });
 
-      // Define columns for the INSERT query based on projectId
+      // Update the columns definition
       const columns =
         projectId === "2228"
-          ? `(id, name, udise, district, block, power_on_time, power_off_time, last_seen_on, connection_state, connection_status, device_status, hm_name, hm_contact_numbers)`
-          : `(id, name, district, block, power_on_time, power_off_time, last_seen_on, connection_state, connection_status, device_status, hm_name, hm_contact_numbers)`;
+          ? `(id, name, serial_no, udise, district, block, power_on_time, power_off_time, last_seen_on, connection_state, connection_status, device_status, hm_name, hm_contact_numbers)`
+          : `(id, name, serial_no, district, block, power_on_time, power_off_time, last_seen_on, connection_state, connection_status, device_status, hm_name, hm_contact_numbers)`;
 
-      // Define columns for the ON DUPLICATE KEY UPDATE clause
+      // Update the updateColumns definition
       const updateColumns =
         projectId === "2228"
-          ? `name = VALUES(name), udise = VALUES(udise), district = VALUES(district), block = VALUES(block), power_on_time = VALUES(power_on_time), power_off_time = VALUES(power_off_time), last_seen_on = VALUES(last_seen_on), connection_state = VALUES(connection_state), connection_status = VALUES(connection_status), device_status = VALUES(device_status), hm_name = VALUES(hm_name), hm_contact_numbers = VALUES(hm_contact_numbers)`
-          : `name = VALUES(name), district = VALUES(district), block = VALUES(block), power_on_time = VALUES(power_on_time), power_off_time = VALUES(power_off_time), last_seen_on = VALUES(last_seen_on), connection_state = VALUES(connection_state), connection_status = VALUES(connection_status), device_status = VALUES(device_status), hm_name = VALUES(hm_name), hm_contact_numbers = VALUES(hm_contact_numbers)`;
+          ? `name = VALUES(name), serial_no = VALUES(serial_no), udise = VALUES(udise), district = VALUES(district), block = VALUES(block), power_on_time = VALUES(power_on_time), power_off_time = VALUES(power_off_time), last_seen_on = VALUES(last_seen_on), connection_state = VALUES(connection_state), connection_status = VALUES(connection_status), device_status = VALUES(device_status), hm_name = VALUES(hm_name), hm_contact_numbers = VALUES(hm_contact_numbers)`
+          : `name = VALUES(name), serial_no = VALUES(serial_no), district = VALUES(district), block = VALUES(block), power_on_time = VALUES(power_on_time), power_off_time = VALUES(power_off_time), last_seen_on = VALUES(last_seen_on), connection_state = VALUES(connection_state), connection_status = VALUES(connection_status), device_status = VALUES(device_status), hm_name = VALUES(hm_name), hm_contact_numbers = VALUES(hm_contact_numbers)`;
 
       await connection.query(
         `INSERT INTO ${tableName} ${columns}

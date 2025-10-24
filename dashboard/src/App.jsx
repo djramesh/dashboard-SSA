@@ -175,53 +175,58 @@ const DeviceData = () => {
   setIsFetching(true);
   setFetchProgress(0);
   try {
+    // First API call to trigger data fetching
     await axios.get(
       `https://dashboard-ssa-production.up.railway.app/api/fetchActiveStatusData/${selectedProject}`,
       {
         params: { fromDate: startDate, toDate: endDate },
       }
     );
-    let pollCount = 0;
-    const maxPolls = 240; // Increased to 2 minutes (240 * 500ms)
+
+    // Start polling for progress
     const pollProgress = setInterval(async () => {
-      pollCount++;
-      if (pollCount > maxPolls) {
-        clearInterval(pollProgress);
-        setIsFetching(false);
-        setLoading(false);
-        alert("Data fetching timed out. Please try again.");
-        return;
-      }
       try {
         const progressResponse = await axios.get(
           `https://dashboard-ssa-production.up.railway.app/api/fetchProgress/${selectedProject}`
         );
-        const { progress, isFetching, completedPages, totalPages } = progressResponse.data;
-        console.log(
-          `Progress Response: progress=${progress}%, isFetching=${isFetching}, completedPages=${completedPages}, totalPages=${totalPages}`
-        );
+        
+        const { progress, isFetching: isStillFetching } = progressResponse.data;
+        console.log(`Progress: ${progress}%, Still fetching: ${isStillFetching}`);
+        
+        // Update progress state
         setFetchProgress(parseFloat(progress));
-        setIsFetching(isFetching);
-        if (!isFetching && progress >= 100) {
+        
+        // Check if fetching is complete
+        if (!isStillFetching) {
           clearInterval(pollProgress);
-          await fetchData(1);
+          await fetchData(1); // Refresh data
           setIsFetching(false);
           setLoading(false);
           alert("Data fetched successfully!");
         }
       } catch (error) {
-        console.error("Polling error:", error.message);
+        console.error("Progress polling error:", error);
         clearInterval(pollProgress);
         setIsFetching(false);
         setLoading(false);
-        alert("Polling failed");
       }
-    }, 500);
+    }, 2000); // Poll every 2 seconds
+
+    // Set a timeout to stop polling after 5 minutes
+    setTimeout(() => {
+      clearInterval(pollProgress);
+      setIsFetching(false);
+      setLoading(false);
+      if (fetchProgress < 100) {
+        alert("Data fetching timed out. Please try again.");
+      }
+    }, 5 * 60 * 1000);
+
   } catch (error) {
-    console.error("Error in fetchActiveStatusData:", error.message);
+    console.error("Error fetching data:", error);
     setIsFetching(false);
     setLoading(false);
-    alert("Error fetching data");
+    alert("Error fetching data. Please try again.");
   }
 };
 
@@ -294,24 +299,31 @@ const DeviceData = () => {
     return (
       <div style={styles.loadingContainer}>
         <div style={styles.loader}>
-          <img
-            src="/loading.gif"
-            alt="Loading..."
-            style={styles.loaderImage}
-          />
+          <img src="/loading.gif" alt="Loading..." style={styles.loaderImage} />
         </div>
         <div style={styles.loadingTextContainer}>
-          <p style={styles.loadingText}>Due to API rate limits, loading may slow down. Please wait...</p>
+          <p style={styles.loadingText}>
+            Due to API rate limits, loading may take a few minutes. Please wait...
+          </p>
           {isFetching && (
             <div style={styles.progressContainer}>
               <div>
-                <p style={styles.progressText}>Date Range: {startDate} to {endDate}</p>
-                <p style={styles.progressText}>Fetching Data: {fetchProgress.toFixed(2)}%</p>
+                <p style={styles.progressText}>
+                  Date Range: {startDate} to {endDate}
+                </p>
+                <p style={styles.progressText}>
+                  Progress: {fetchProgress.toFixed(2)}%
+                </p>
               </div>
               <LinearProgress
                 variant="determinate"
                 value={fetchProgress}
-                sx={styles.progressBar}
+                sx={{
+                  ...styles.progressBar,
+                  "& .MuiLinearProgress-bar": {
+                    transition: "transform 0.5s linear",
+                  },
+                }}
               />
             </div>
           )}
