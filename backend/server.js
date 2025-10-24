@@ -62,6 +62,7 @@ const initializeDatabase = async () => {
     CREATE TABLE IF NOT EXISTS project_3570_db (
       id INT PRIMARY KEY,
       name VARCHAR(255),
+      serial_no VARCHAR(255),
       district VARCHAR(255),
       block VARCHAR(255),
       power_on_time VARCHAR(50),
@@ -109,6 +110,7 @@ const fetchAndStoreData = async (projectId) => {
         const baseDevice = [
           device.device.id,
           device.device.name,
+          device.device.serial_no,
           device.device.custom_properties.find((prop) => prop.name === "District")?.value || "N/A",
           device.device.custom_properties.find((prop) => prop.name === "Block")?.value || "N/A",
           device.device.power_on_time || null,

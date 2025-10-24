@@ -261,7 +261,7 @@ const DeviceData = () => {
       const sanitizedData = allDevices.map(
         ({ hm_contact_number, ...rest }) => ({
           ...rest,
-          total_active_duration_seconds: convertToSeconds(rest.total_active_duration), // Add seconds column
+          total_active_duration_seconds: convertToSeconds(rest.total_active_duration),
         })
       );
       const ws = XLSX.utils.json_to_sheet(sanitizedData);
@@ -331,7 +331,7 @@ const DeviceData = () => {
           style={styles.dropdown}
         >
           <option value="2228">FY24-25 (Project 2228)</option>
-          <option value="3570">FY23-24 (Project 3580)</option>
+          <option value="3570">FY23-24 (Project 3570)</option>
         </select>
       </div>
       <h1 style={styles.header}>Dashboard of Assam Smart Classroom Project</h1>
@@ -507,6 +507,7 @@ const DeviceData = () => {
                   "S.No",
                   "ID",
                   "Name",
+                  "Device Serial No",
                   "UDISE code",
                   "District",
                   "Block",
@@ -535,6 +536,7 @@ const DeviceData = () => {
                   </td>
                   <td style={styles.tableData}>{item.id}</td>
                   <td style={styles.tableData}>{item.name}</td>
+                  <td style={styles.tableData}>{item.serial_no}</td>
                   <td style={styles.tableData}>{item.udise}</td>
                   <td style={styles.tableData}>{item.district}</td>
                   <td style={styles.tableData}>{item.block}</td>
