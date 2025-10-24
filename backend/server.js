@@ -6,7 +6,7 @@ const NodeCache = require("node-cache");
 require("dotenv").config();
 
 const app = express();
-const PORT = process.env.PORT || 3006; // Use Railway's PORT or fallback to 3006
+const PORT = process.env.PORT || 3006;
 const cache = new NodeCache({ stdTTL: 30 });
 
 const API_KEYS = {
@@ -18,7 +18,7 @@ app.use(
   cors({
     origin: [
       "https://ssaassamsmartclassroomschoolnetindia.com",
-      "http://localhost:3000", // For local development
+      "http://localhost:3000",
     ],
     methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -43,6 +43,7 @@ const initializeDatabase = async () => {
    CREATE TABLE IF NOT EXISTS project_2228_db (
       id INT PRIMARY KEY,
       name VARCHAR(255),
+      serial_no VARCHAR(255),
       udise VARCHAR(255),
       district VARCHAR(255),
       block VARCHAR(255),
@@ -62,7 +63,7 @@ const initializeDatabase = async () => {
     CREATE TABLE IF NOT EXISTS project_3570_db (
       id INT PRIMARY KEY,
       name VARCHAR(255),
-      serial_no VARCHAR(255),
+      searial_no VARCHAR(255),
       district VARCHAR(255),
       block VARCHAR(255),
       power_on_time VARCHAR(50),
@@ -128,7 +129,7 @@ const fetchAndStoreData = async (projectId) => {
           baseDevice.splice(2, 0, device.device.custom_properties.find((prop) => prop.name === "Udise Code")?.value || "N/A");
         }
 
-
+        console.log(serial_no);
 
         return baseDevice;
       });
