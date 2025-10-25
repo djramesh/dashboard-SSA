@@ -77,6 +77,7 @@ const getApproximateDuration = (duration) => {
   const seconds = parseInt(matches[3] || matches[5] || matches[6] || 0);
 
   if (hours === 0 && minutes === 0) return "Less than a min";
+  if(seconds === 0) return "Inactive";
   if (hours === 0) return "Less than an hour";
   return `About ${hours} ${hours === 1 ? 'hour' : 'hours'}`;
 };
