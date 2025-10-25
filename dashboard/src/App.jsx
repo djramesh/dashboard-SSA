@@ -64,6 +64,23 @@ const convertToSeconds = (duration) => {
   return totalSeconds;
 };
 
+const getApproximateDuration = (duration) => {
+  if (!duration || duration === "0 hr 0 min 0 sec" || duration === "0 sec") {
+    return "Less than a min";
+  }
+  
+  const matches = duration.match(/(\d+)\s*hr\s*(\d+)\s*min\s*(\d+)\s*sec|(\d+)\s*min\s*(\d+)\s*sec|(\d+)\s*sec/);
+  if (!matches) return "Invalid duration";
+
+  const hours = parseInt(matches[1] || 0);
+  const minutes = parseInt(matches[2] || matches[4] || 0);
+  const seconds = parseInt(matches[3] || matches[5] || matches[6] || 0);
+
+  if (hours === 0 && minutes === 0) return "Less than a min";
+  if (hours === 0) return "Less than an hour";
+  return `About ${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+};
+
 const districtsOfAssam = [
   "BAJALI",
   "BAKSA",
@@ -587,7 +604,8 @@ const DeviceData = () => {
                   </td>
                   <td style={styles.tableData}>{item.active_dates}</td>
                   <td style={styles.tableData}>{item.total_active_duration}</td>
-                  <td style={styles.tableData}>{item.approximate_duration}</td>
+                  <td style={styles.tableData}>{getApproximateDuration(item.total_active_duration)}</td>
+                  {/* <td style={styles.tableData}>{item.approximate_duration}</td> */}
                   <td style={styles.tableData}>{convertToSeconds(item.total_active_duration)}</td>
                   <td style={styles.tableData}>{item.hm_name}</td>
                   <td style={styles.tableData}>{item.hm_contact_numbers}</td>
