@@ -545,6 +545,7 @@ const DeviceData = () => {
                   "Active Dates",
                   "Total Active Duration",
                   "Approximate Duration",
+                  "Total Active Duration (Seconds)",
                   "HM Name",
                   "HM Contact No.",
                 ].map((header) => (
@@ -586,6 +587,7 @@ const DeviceData = () => {
                   </td>
                   <td style={styles.tableData}>{item.active_dates}</td>
                   <td style={styles.tableData}>{item.total_active_duration}</td>
+                  <td style={styles.tableData}>{item.approximate_duration}</td>
                   <td style={styles.tableData}>{convertToSeconds(item.total_active_duration)}</td>
                   <td style={styles.tableData}>{item.hm_name}</td>
                   <td style={styles.tableData}>{item.hm_contact_numbers}</td>
