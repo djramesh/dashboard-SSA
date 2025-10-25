@@ -66,7 +66,7 @@ const convertToSeconds = (duration) => {
 
 const getApproximateDuration = (duration) => {
   if (!duration || duration === "0 hr 0 min 0 sec" || duration === "0 sec") {
-    return "Less than a min";
+    return "Inactive";
   }
   
   const matches = duration.match(/(\d+)\s*hr\s*(\d+)\s*min\s*(\d+)\s*sec|(\d+)\s*min\s*(\d+)\s*sec|(\d+)\s*sec/);
