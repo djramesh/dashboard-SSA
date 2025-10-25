@@ -262,16 +262,34 @@ const DeviceData = () => {
           },
         }
       );
-      const allDevices = response.data.devices || [];
-      const sanitizedData = allDevices.map(
-        ({ hm_contact_number, ...rest }) => ({
-          ...rest,
-          total_active_duration_seconds: convertToSeconds(rest.total_active_duration),
-        })
-      );
-      const ws = XLSX.utils.json_to_sheet(sanitizedData);
+      
+      const { devices, durationStats, pieChartData } = response.data;
+
+      // Create worksheet for devices
+      const ws = XLSX.utils.json_to_sheet(devices);
+
+      // Create worksheet for duration statistics
+      const statsData = Object.entries(durationStats).map(([duration, count]) => ({
+        Duration: duration,
+        Count: count
+      }));
+      const statsWs = XLSX.utils.json_to_sheet(statsData);
+
+      // Create a new workbook
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Devices_db");
+      XLSX.utils.book_append_sheet(wb, ws, "Devices_Data");
+      XLSX.utils.book_append_sheet(wb, statsWs, "Duration_Statistics");
+
+      // Add pie chart (if your XLSX library supports it)
+      if (pieChartData) {
+        const chartWs = XLSX.utils.aoa_to_sheet([
+          ["Duration Distribution"],
+          ["Duration", "Count"],
+          ...pieChartData.labels.map((label, i) => [label, pieChartData.values[i]])
+        ]);
+        XLSX.utils.book_append_sheet(wb, chartWs, "Chart_Data");
+      }
+
       XLSX.writeFile(wb, `devices_data_${selectedProject}.xlsx`);
     } catch (error) {
       console.error("Error downloading Excel:", error);
@@ -523,11 +541,10 @@ const DeviceData = () => {
                   "UDISE code",
                   "District",
                   "Block",
-                  "Last Seen On",
                   "Live Connection State",
                   "Active Dates",
                   "Total Active Duration",
-                  "Total Active Duration (Seconds)",
+                  "Approximate Duration",
                   "HM Name",
                   "HM Contact No.",
                 ].map((header) => (
@@ -552,9 +569,9 @@ const DeviceData = () => {
                   <td style={styles.tableData}>{item.udise}</td>
                   <td style={styles.tableData}>{item.district}</td>
                   <td style={styles.tableData}>{item.block}</td>
-                  <td style={styles.tableData}>
+                  {/* <td style={styles.tableData}>
                     {formatDateTime(item.last_seen_on)}
-                  </td>
+                  </td> */}
                   <td style={styles.tableData}>
                     <span
                       style={{

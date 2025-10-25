@@ -56,6 +56,7 @@ const initializeDatabase = async () => {
       hm_name VARCHAR(255),
       hm_contact_numbers VARCHAR(30),
       active_dates TEXT,
+      approximate_duration VARCHAR(50),
       total_active_duration VARCHAR(50)
     )
   `);
@@ -75,6 +76,7 @@ const initializeDatabase = async () => {
       hm_name VARCHAR(255),
       hm_contact_numbers VARCHAR(30),
       active_dates TEXT,
+      approximate_duration VARCHAR(50),
       total_active_duration VARCHAR(50)
     )
   `);
@@ -306,24 +308,31 @@ const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
     const updates = [];
     for (const [deviceId, data] of activeDataMap.entries()) {
       const humanReadableDuration = convertToHumanReadable(data.totalDuration);
-      updates.push([deviceId, [...data.activeDates].join(", "), humanReadableDuration]);
+      const approximateDuration = getApproximateDuration(humanReadableDuration);
+      updates.push([deviceId, [...data.activeDates].join(", "), humanReadableDuration, approximateDuration]);
     }
 
     const inactiveDevices = [...existingDeviceIds].filter((id) => !allDeviceIds.has(id));
-    const inactiveUpdates = inactiveDevices.map((id) => [id, "Not active", "0 sec"]);
+    const inactiveUpdates = inactiveDevices.map((id) => [id, "Not active", "0 sec", "Less than a min"]);
 
     if (updates.length > 0) {
       await connection.query(
-        `INSERT INTO ${tableName} (id, active_dates, total_active_duration) VALUES ?
-         ON DUPLICATE KEY UPDATE active_dates = VALUES(active_dates), total_active_duration = VALUES(total_active_duration)`,
+        `INSERT INTO ${tableName} (id, active_dates, total_active_duration, approximate_duration) VALUES ?
+         ON DUPLICATE KEY UPDATE 
+         active_dates = VALUES(active_dates), 
+         total_active_duration = VALUES(total_active_duration),
+         approximate_duration = VALUES(approximate_duration)`,
         [updates]
       );
     }
 
     if (inactiveUpdates.length > 0) {
       await connection.query(
-        `INSERT INTO ${tableName} (id, active_dates, total_active_duration) VALUES ?
-         ON DUPLICATE KEY UPDATE active_dates = VALUES(active_dates), total_active_duration = VALUES(total_active_duration)`,
+        `INSERT INTO ${tableName} (id, active_dates, total_active_duration, approximate_duration) VALUES ?
+         ON DUPLICATE KEY UPDATE 
+         active_dates = VALUES(active_dates), 
+         total_active_duration = VALUES(total_active_duration),
+         approximate_duration = VALUES(approximate_duration)`,
         [inactiveUpdates]
       );
     }
@@ -349,6 +358,22 @@ const convertToHumanReadable = (seconds) => {
   const minutes = Math.floor(seconds / 60);
   seconds %= 60;
   return `${hours} hr ${minutes} min ${seconds} sec`;
+};
+
+// Add this function after convertToHumanReadable
+const getApproximateDuration = (duration) => {
+  if (!duration || duration === "0 hr 0 min 0 sec") return "Less than a min";
+  
+  const matches = duration.match(/(\d+)\s*hr\s*(\d+)\s*min\s*(\d+)\s*sec/);
+  if (!matches) return "Invalid duration";
+
+  const hours = parseInt(matches[1]);
+  const minutes = parseInt(matches[2]);
+  const seconds = parseInt(matches[3]);
+
+  if (hours === 0 && minutes === 0) return "Less than a min";
+  if (hours === 0) return "Less than an hour";
+  return `About ${hours} ${hours === 1 ? 'hour' : 'hours'}`;
 };
 
 app.get("/api/devices/:projectId", async (req, res) => {
@@ -439,7 +464,9 @@ app.get("/api/all-devices/:projectId", async (req, res) => {
 
   try {
     const connection = await dbPool.getConnection();
-    let query = `SELECT * FROM ${tableName} WHERE 1=1`;
+    let query = `SELECT *, 
+      COUNT(*) OVER (PARTITION BY approximate_duration) as duration_count 
+      FROM ${tableName} WHERE 1=1`;
     const params = [];
 
     if (searchTerm.trim()) {
@@ -459,7 +486,27 @@ app.get("/api/all-devices/:projectId", async (req, res) => {
     }
 
     const [devices] = await connection.query(query, params);
-    res.json({ devices });
+    
+    // Calculate duration statistics
+    const durationStats = devices.reduce((acc, device) => {
+      const duration = device.approximate_duration;
+      if (!acc[duration]) {
+        acc[duration] = device.duration_count;
+      }
+      return acc;
+    }, {});
+
+    // Prepare pie chart data
+    const pieChartData = {
+      labels: Object.keys(durationStats),
+      values: Object.values(durationStats)
+    };
+
+    res.json({ 
+      devices,
+      durationStats,
+      pieChartData
+    });
     connection.release();
   } catch (error) {
     console.error(`Error fetching all devices for project ${projectId}:`, error.message);
