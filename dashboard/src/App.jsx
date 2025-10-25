@@ -77,7 +77,6 @@ const getApproximateDuration = (duration) => {
   const seconds = parseInt(matches[3] || matches[5] || matches[6] || 0);
 
   if (hours === 0 && minutes === 0) return "Less than a min";
-  if(seconds === 0) return "Inactive";
   if (hours === 0) return "Less than an hour";
   return `About ${hours} ${hours === 1 ? 'hour' : 'hours'}`;
 };
@@ -280,34 +279,54 @@ const DeviceData = () => {
           },
         }
       );
-      
-      const { devices, durationStats, pieChartData } = response.data;
 
-      // Create worksheet for devices
-      const ws = XLSX.utils.json_to_sheet(devices);
+      const devices = response.data.devices || [];
 
-      // Create worksheet for duration statistics
-      const statsData = Object.entries(durationStats).map(([duration, count]) => ({
-        Duration: duration,
-        Count: count
-      }));
-      const statsWs = XLSX.utils.json_to_sheet(statsData);
+      // Build rows with computed Approximate Duration and Seconds (matching table view)
+      const processedDevices = devices.map((d, idx) => {
+        const approx = getApproximateDuration(d.total_active_duration);
+        const seconds = convertToSeconds(d.total_active_duration);
+        return {
+          "S.No": idx + 1,
+          "ID": d.id,
+          "Name": d.name,
+          "Device Serial No": d.serial_no || "",
+          "UDISE code": d.udise || "",
+          "District": d.district || "",
+          "Block": d.block || "",
+          "Live Connection State": d.connection_state || "",
+          "Active Dates": d.active_dates || "",
+          "Total Active Duration": d.total_active_duration || "",
+          "Approximate Duration": approx,
+          "Total Active Duration (Seconds)": seconds,
+          "HM Name": d.hm_name || "",
+          "HM Contact No.": d.hm_contact_numbers || "",
+        };
+      });
 
-      // Create a new workbook
+      // Calculate duration statistics (counts by approximate category)
+      const durationCounts = processedDevices.reduce((acc, row) => {
+        const key = row["Approximate Duration"] || "Unknown";
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
+
+      const statsData = Object.entries(durationCounts).map(([Duration, Count]) => ({ Duration, Count }));
+
+      // Create workbook and sheets
+      const wsDevices = XLSX.utils.json_to_sheet(processedDevices);
+      const wsStats = XLSX.utils.json_to_sheet(statsData);
+      const wsChart = XLSX.utils.aoa_to_sheet([
+        ["Duration", "Count"],
+        ...statsData.map((r) => [r.Duration, r.Count]),
+      ]);
+
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Devices_Data");
-      XLSX.utils.book_append_sheet(wb, statsWs, "Duration_Statistics");
+      XLSX.utils.book_append_sheet(wb, wsDevices, "Devices_Data");
+      XLSX.utils.book_append_sheet(wb, wsStats, "Duration_Statistics");
+      XLSX.utils.book_append_sheet(wb, wsChart, "Chart_Data");
 
-      // Add pie chart (if your XLSX library supports it)
-      if (pieChartData) {
-        const chartWs = XLSX.utils.aoa_to_sheet([
-          ["Duration Distribution"],
-          ["Duration", "Count"],
-          ...pieChartData.labels.map((label, i) => [label, pieChartData.values[i]])
-        ]);
-        XLSX.utils.book_append_sheet(wb, chartWs, "Chart_Data");
-      }
-
+      // Save file
       XLSX.writeFile(wb, `devices_data_${selectedProject}.xlsx`);
     } catch (error) {
       console.error("Error downloading Excel:", error);
