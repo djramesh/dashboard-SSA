@@ -87,7 +87,7 @@ const getApproximateDuration = (duration) => {
   } else if (totalHours >= 3 && totalHours < 4) {
     return "Between 3 to 4 hours";
   } else {
-    return "Above 4 hours";
+     return "Above 4 hours";
   }
 };
 
@@ -292,49 +292,79 @@ const DeviceData = () => {
 
       const devices = response.data.devices || [];
 
-      // Build rows with computed Approximate Duration and Seconds (matching table view)
-      const processedDevices = devices.map((d, idx) => {
-        const approx = getApproximateDuration(d.total_active_duration);
-        const seconds = convertToSeconds(d.total_active_duration);
-        return {
-          "S.No": idx + 1,
-          "ID": d.id,
-          "Name": d.name,
-          "Device Serial No": d.serial_no || "",
-          "UDISE code": d.udise || "",
-          "District": d.district || "",
-          "Block": d.block || "",
-          "Live Connection State": d.connection_state || "",
-          "Active Dates": d.active_dates || "",
-          "Total Active Duration": d.total_active_duration || "",
-          "Approximate Duration": approx,
-          "Total Active Duration (Seconds)": seconds,
-          "HM Name": d.hm_name || "",
-          "HM Contact No.": d.hm_contact_numbers || "",
-        };
-      });
+      // Sheet 1: Detailed device data
+      const processedDevices = devices.map((d, idx) => ({
+        "S.No": idx + 1,
+        "ID": d.id,
+        "Name": d.name,
+        "Device Serial No": d.serial_no || "",
+        "UDISE code": d.udise || "",
+        "District": d.district || "",
+        "Block": d.block || "",
+        "Live Connection State": d.connection_state || "",
+        "Active Dates": d.active_dates || "",
+        "Total Active Duration": d.total_active_duration || "",
+        "Approximate Duration": getApproximateDuration(d.total_active_duration),
+        "HM Name": d.hm_name || "",
+        "HM Contact No.": d.hm_contact_numbers || "",
+      }));
 
-      // Calculate duration statistics (counts by approximate category)
-      const durationCounts = processedDevices.reduce((acc, row) => {
-        const key = row["Approximate Duration"] || "Unknown";
-        acc[key] = (acc[key] || 0) + 1;
+      // Sheet 2: Summary Report
+      const durationCounts = devices.reduce((acc, device) => {
+        const duration = getApproximateDuration(device.total_active_duration);
+        acc[duration] = (acc[duration] || 0) + 1;
         return acc;
       }, {});
 
-      const statsData = Object.entries(durationCounts).map(([Duration, Count]) => ({ Duration, Count }));
+      const totalClassrooms = devices.length;
+      const currentDate = new Date().toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+      const summaryData = [
+        [`Daily Usage Report-Dated: ${currentDate}`],
+        [],
+        [
+          "Total Classroom",
+          "Less Than 1 Hrs",
+          "Between 1 to 2 Hrs",
+          "Between 2 to 3 Hrs",
+          "Between 3 to 4 Hrs",
+          "Above 4 Hrs",
+          "Not Used",
+          "Total Hr",
+          "Avg Usage Per Device(in minute)",
+          "Grand Total"
+        ],
+        [
+          totalClassrooms,
+          durationCounts["Less than an hour"] || 0,
+          durationCounts["Between 1 to 2 hours"] || 0,
+          durationCounts["Between 2 to 3 hours"] || 0,
+          durationCounts["Between 3 to 4 hours"] || 0,
+          durationCounts["Above 4 hours"] || 0,
+          durationCounts["Inactive"] || 0,
+          calculateTotalHours(devices),
+          calculateAvgMinutes(devices),
+          totalClassrooms
+        ]
+      ];
 
       // Create workbook and sheets
-      const wsDevices = XLSX.utils.json_to_sheet(processedDevices);
-      const wsStats = XLSX.utils.json_to_sheet(statsData);
-      const wsChart = XLSX.utils.aoa_to_sheet([
-        ["Duration", "Count"],
-        ...statsData.map((r) => [r.Duration, r.Count]),
-      ]);
-
       const wb = XLSX.utils.book_new();
+      
+      // Add detailed devices sheet
+      const wsDevices = XLSX.utils.json_to_sheet(processedDevices);
       XLSX.utils.book_append_sheet(wb, wsDevices, "Devices_Data");
-      XLSX.utils.book_append_sheet(wb, wsStats, "Duration_Statistics");
-      XLSX.utils.book_append_sheet(wb, wsChart, "Chart_Data");
+
+      // Add summary report sheet
+      const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+
+      // Style the summary sheet
+      wsSummary['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 9 } }]; // Merge cells for title
+      wsSummary['!cols'] = [{ wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, 
+                         { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
+                         { wch: 25 }, { wch: 15 }]; // Set column widths
+
+      XLSX.utils.book_append_sheet(wb, wsSummary, "Usage_Summary");
 
       // Save file
       XLSX.writeFile(wb, `devices_data_${selectedProject}.xlsx`);
@@ -344,6 +374,21 @@ const DeviceData = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper functions for calculations
+  const calculateTotalHours = (devices) => {
+    return devices.reduce((total, device) => {
+      const seconds = convertToSeconds(device.total_active_duration);
+      return total + (seconds / 3600); // Convert seconds to hours
+    }, 0).toFixed(2);
+  };
+
+  const calculateAvgMinutes = (devices) => {
+    const totalSeconds = devices.reduce((total, device) => {
+      return total + convertToSeconds(device.total_active_duration);
+    }, 0);
+    return ((totalSeconds / 60) / devices.length).toFixed(2); // Average minutes per device
   };
 
   const handleNextPage = () => {
