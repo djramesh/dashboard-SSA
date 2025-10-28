@@ -66,7 +66,7 @@ const convertToSeconds = (duration) => {
 
 const getApproximateDuration = (duration) => {
   if (!duration || duration === "0 hr 0 min 0 sec" || duration === "0 sec") {
-    return "Inactive";
+    return "Not used";
   }
   
   const matches = duration.match(/(\d+)\s*hr\s*(\d+)\s*min\s*(\d+)\s*sec|(\d+)\s*min\s*(\d+)\s*sec|(\d+)\s*sec/);
@@ -75,10 +75,20 @@ const getApproximateDuration = (duration) => {
   const hours = parseInt(matches[1] || 0);
   const minutes = parseInt(matches[2] || matches[4] || 0);
   const seconds = parseInt(matches[3] || matches[5] || matches[6] || 0);
+  
+  const totalHours = hours + (minutes / 60) + (seconds / 3600);
 
-  if (hours === 0 && minutes === 0) return "Less than a min";
-  if (hours === 0) return "Less than an hour";
-  return `About ${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+  if (totalHours < 1) {
+    return "Less than an hour";
+  } else if (totalHours >= 1 && totalHours < 2) {
+    return "Between 1 to 2 hours";
+  } else if (totalHours >= 2 && totalHours < 3) {
+    return "Between 2 to 3 hours";
+  } else if (totalHours >= 3 && totalHours < 4) {
+    return "Between 3 to 4 hours";
+  } else {
+    return "Above 4 hours";
+  }
 };
 
 const districtsOfAssam = [
