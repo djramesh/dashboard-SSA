@@ -306,7 +306,7 @@ const DeviceData = () => {
         "HM Contact No.": d.hm_contact_numbers || "",
       }));
 
-      // Stats for summary + chart
+      // Stats for summary
       const durationCounts = devices.reduce((acc, device) => {
         const key = getApproximateDuration(device.total_active_duration);
         acc[key] = (acc[key] || 0) + 1;
@@ -316,7 +316,29 @@ const DeviceData = () => {
       const totalClassrooms = devices.length;
       const currentDate = new Date().toLocaleDateString("en-GB");
 
-      // Build summary rows (matching your screenshot)
+      const workbook = new ExcelJS.Workbook();
+
+      // Devices sheet
+      const wsDevices = workbook.addWorksheet("Devices_Data");
+      if (processedDevices.length) {
+        wsDevices.addRow(Object.keys(processedDevices[0]));
+        processedDevices.forEach(row => wsDevices.addRow(Object.values(row)));
+      }
+
+      // Summary sheet
+      const wsSummary = workbook.addWorksheet("Usage_Summary");
+
+      // Title with date
+      wsSummary.mergeCells('A1:J1');
+      const titleCell = wsSummary.getCell('A1');
+      titleCell.value = `Daily Usage Report-Dated: ${currentDate}`;
+      titleCell.alignment = { horizontal: 'center' };
+      titleCell.font = { bold: true, size: 14 };
+
+      // Add empty row
+      wsSummary.addRow([]);
+
+      // Summary table headers
       const summaryHeaders = [
         "Total Classroom",
         "Less Than 1 Hrs",
@@ -327,118 +349,68 @@ const DeviceData = () => {
         "Not Used",
         "Total Hr",
         "Avg Usage Per Device(in minute)",
-        "Grand Total",
+        "Grand Total"
       ];
 
-      const summaryRow = [
+      // Summary data row
+      const summaryData = [
         totalClassrooms,
         durationCounts["Less than an hour"] || 0,
         durationCounts["Between 1 to 2 hours"] || 0,
         durationCounts["Between 2 to 3 hours"] || 0,
         durationCounts["Between 3 to 4 hours"] || 0,
         durationCounts["Above 4 hours"] || 0,
-        durationCounts["Inactive"] || durationCounts["Not used"] || 0,
+        durationCounts["Not used"] || 0,
         calculateTotalHours(devices),
         calculateAvgMinutes(devices),
-        totalClassrooms,
+        totalClassrooms
       ];
 
-      // Create workbook & sheets
-      const workbook = new ExcelJS.Workbook();
-
-      // Devices sheet
-      const wsDevices = workbook.addWorksheet("Devices_Data");
-      if (processedDevices.length) {
-        wsDevices.addRow(Object.keys(processedDevices[0])); // headers
-        processedDevices.forEach((row) => wsDevices.addRow(Object.values(row)));
-      }
-
-      // Summary sheet: title + table
-      const wsSummary = workbook.addWorksheet("Usage_Summary");
-      wsSummary.addRow([`Daily Usage Report-Dated: ${currentDate}`]);
-      wsSummary.addRow([]); // blank row
+      // Add summary table
       wsSummary.addRow(summaryHeaders);
-      wsSummary.addRow(summaryRow);
+      wsSummary.addRow(summaryData);
 
-      // Optionally set column widths
-      wsSummary.columns = summaryHeaders.map(() => ({ width: 18 }));
+      // Style summary table
+      wsSummary.getRow(3).font = { bold: true };
+      wsSummary.columns.forEach(column => {
+        column.width = 20;
+        column.alignment = { horizontal: 'center' };
+      });
 
-      // Prepare chart data arrays (labels + values) in same sheet (Chart_Data region)
-      const chartStartRow = 6; // row index starting at 1
-      wsSummary.getRow(chartStartRow).getCell(1).value = "Duration";
-      wsSummary.getRow(chartStartRow).getCell(2).value = "Count";
+      // Add chart data table
+      wsSummary.addRow([]); // Empty row for spacing
+      wsSummary.addRow(['Duration Distribution']);
+      wsSummary.addRow(['Duration Category', 'Number of Devices', 'Percentage']);
 
-      const chartLabels = [
-        "Less than an hour",
-        "Between 1 to 2 hours",
-        "Between 2 to 3 hours",
-        "Between 3 to 4 hours",
-        "Above 4 hours",
-        "Not Used / Inactive",
+      const chartData = [
+        ["Less than an hour", durationCounts["Less than an hour"] || 0],
+        ["Between 1 to 2 hours", durationCounts["Between 1 to 2 hours"] || 0],
+        ["Between 2 to 3 hours", durationCounts["Between 2 to 3 hours"] || 0],
+        ["Between 3 to 4 hours", durationCounts["Between 3 to 4 hours"] || 0],
+        ["Above 4 hours", durationCounts["Above 4 hours"] || 0],
+        ["Not Used", durationCounts["Not used"] || 0]
       ];
-      const chartValues = chartLabels.map((lbl) => {
-        if (lbl === "Not Used / Inactive") return durationCounts["Inactive"] || durationCounts["Not used"] || 0;
-        return durationCounts[lbl] || 0;
+
+      // Add chart data with percentages
+      chartData.forEach(([category, count]) => {
+        const percentage = ((count / totalClassrooms) * 100).toFixed(2);
+        wsSummary.addRow([category, count, `${percentage}%`]);
       });
 
-      for (let i = 0; i < chartLabels.length; i++) {
-        wsSummary.getRow(chartStartRow + 1 + i).getCell(1).value = chartLabels[i];
-        wsSummary.getRow(chartStartRow + 1 + i).getCell(2).value = chartValues[i];
-      }
-
-      // Render a Chart.js chart to a hidden canvas and convert to PNG
-      const canvas = document.createElement("canvas");
-      canvas.width = 800;
-      canvas.height = 450;
-      const ctx = canvas.getContext("2d");
-      const chartInstance = new ChartJS(ctx, {
-        type: "pie", // or 'bar'
-        data: {
-          labels: chartLabels,
-          datasets: [
-            {
-              data: chartValues,
-              backgroundColor: ["#F59E0B", "#60A5FA", "#34D399", "#F97316", "#EF4444", "#9CA3AF"],
-              borderWidth: 1,
-            },
-          ],
-        },
-        options: {
-          plugins: {
-            legend: { position: "right" },
-            title: { display: true, text: `Usage Summary - ${currentDate}` },
-          },
-        },
-      });
-
-      // Wait a tick for Chart to draw then get image
-      await new Promise((r) => setTimeout(r, 200));
-      const dataUrl = canvas.toDataURL("image/png");
-      chartInstance.destroy();
-
-      // Strip prefix and add as image to workbook
-      const base64 = dataUrl.split(",")[1];
-      const imageId = workbook.addImage({ base64, extension: "png" });
-
-      // Place image below the summary table (e.g., row 12)
-      wsSummary.addImage(imageId, {
-        tl: { col: 0, row: chartStartRow + chartLabels.length + 1 },
-        ext: { width: 600, height: 360 },
-      });
-
-      // Write workbook to buffer and download in browser
-      const buf = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buf], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      // Save workbook
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
       });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
+      const a = document.createElement('a');
       a.href = url;
       a.download = `devices_data_${selectedProject}.xlsx`;
       document.body.appendChild(a);
       a.click();
-      a.remove();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
+
     } catch (error) {
       console.error("Error downloading Excel:", error);
       alert("Failed to download Excel file.");
