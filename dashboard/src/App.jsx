@@ -380,7 +380,7 @@ const DeviceData = () => {
   const calculateTotalHours = (devices) => {
     return devices.reduce((total, device) => {
       const seconds = convertToSeconds(device.total_active_duration);
-      return total + (seconds / 3600); // Convert seconds to hours
+      return total + (seconds / 3600);
     }, 0).toFixed(2);
   };
 
@@ -388,7 +388,7 @@ const DeviceData = () => {
     const totalSeconds = devices.reduce((total, device) => {
       return total + convertToSeconds(device.total_active_duration);
     }, 0);
-    return ((totalSeconds / 60) / devices.length).toFixed(2); // Average minutes per device
+    return ((totalSeconds / 60) / devices.length).toFixed(2);
   };
 
   const handleNextPage = () => {
