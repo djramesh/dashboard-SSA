@@ -341,7 +341,7 @@ const DeviceData = () => {
           durationCounts["Between 2 to 3 hours"] || 0,
           durationCounts["Between 3 to 4 hours"] || 0,
           durationCounts["Above 4 hours"] || 0,
-          durationCounts["Not Used"] || 0,
+          durationCounts["Not used"] || 0,
           calculateTotalHours(devices),
           calculateAvgMinutes(devices),
           totalClassrooms
