@@ -6,6 +6,7 @@ import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import * as XLSX from "xlsx";
 import LinearProgress from "@mui/material/LinearProgress";
+import ExcelJS from 'exceljs'; // Add this import at the top
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -282,11 +283,7 @@ const DeviceData = () => {
       const response = await axios.get(
         `https://dashboard-ssa-production.up.railway.app/api/all-devices/${selectedProject}`,
         {
-          params: {
-            searchTerm,
-            district: selectedDistrict,
-            status: connectionStatus,
-          },
+          params: { searchTerm, district: selectedDistrict, status: connectionStatus },
         }
       );
 
@@ -309,65 +306,139 @@ const DeviceData = () => {
         "HM Contact No.": d.hm_contact_numbers || "",
       }));
 
-      // Sheet 2: Summary Report
+      // Stats for summary + chart
       const durationCounts = devices.reduce((acc, device) => {
-        const duration = getApproximateDuration(device.total_active_duration);
-        acc[duration] = (acc[duration] || 0) + 1;
+        const key = getApproximateDuration(device.total_active_duration);
+        acc[key] = (acc[key] || 0) + 1;
         return acc;
       }, {});
 
       const totalClassrooms = devices.length;
-      const currentDate = new Date().toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const currentDate = new Date().toLocaleDateString("en-GB");
 
-      const summaryData = [
-        [`Daily Usage Report-Dated: ${currentDate}`],
-        [],
-        [
-          "Total Classroom",
-          "Less Than 1 Hrs",
-          "Between 1 to 2 Hrs",
-          "Between 2 to 3 Hrs",
-          "Between 3 to 4 Hrs",
-          "Above 4 Hrs",
-          "Not Used",
-          "Total Hr",
-          "Avg Usage Per Device(in minute)",
-          "Grand Total"
-        ],
-        [
-          totalClassrooms,
-          durationCounts["Less than an hour"] || 0,
-          durationCounts["Between 1 to 2 hours"] || 0,
-          durationCounts["Between 2 to 3 hours"] || 0,
-          durationCounts["Between 3 to 4 hours"] || 0,
-          durationCounts["Above 4 hours"] || 0,
-          durationCounts["Not used"] || 0,
-          calculateTotalHours(devices),
-          calculateAvgMinutes(devices),
-          totalClassrooms
-        ]
+      // Build summary rows (matching your screenshot)
+      const summaryHeaders = [
+        "Total Classroom",
+        "Less Than 1 Hrs",
+        "Between 1 to 2 Hrs",
+        "Between 2 to 3 Hrs",
+        "Between 3 to 4 Hrs",
+        "Above 4 Hrs",
+        "Not Used",
+        "Total Hr",
+        "Avg Usage Per Device(in minute)",
+        "Grand Total",
       ];
 
-      // Create workbook and sheets
-      const wb = XLSX.utils.book_new();
-      
-      // Add detailed devices sheet
-      const wsDevices = XLSX.utils.json_to_sheet(processedDevices);
-      XLSX.utils.book_append_sheet(wb, wsDevices, "Devices_Data");
+      const summaryRow = [
+        totalClassrooms,
+        durationCounts["Less than an hour"] || 0,
+        durationCounts["Between 1 to 2 hours"] || 0,
+        durationCounts["Between 2 to 3 hours"] || 0,
+        durationCounts["Between 3 to 4 hours"] || 0,
+        durationCounts["Above 4 hours"] || 0,
+        durationCounts["Inactive"] || durationCounts["Not used"] || 0,
+        calculateTotalHours(devices),
+        calculateAvgMinutes(devices),
+        totalClassrooms,
+      ];
 
-      // Add summary report sheet
-      const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+      // Create workbook & sheets
+      const workbook = new ExcelJS.Workbook();
 
-      // Style the summary sheet
-      wsSummary['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 9 } }]; // Merge cells for title
-      wsSummary['!cols'] = [{ wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, 
-                         { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
-                         { wch: 25 }, { wch: 15 }]; // Set column widths
+      // Devices sheet
+      const wsDevices = workbook.addWorksheet("Devices_Data");
+      if (processedDevices.length) {
+        wsDevices.addRow(Object.keys(processedDevices[0])); // headers
+        processedDevices.forEach((row) => wsDevices.addRow(Object.values(row)));
+      }
 
-      XLSX.utils.book_append_sheet(wb, wsSummary, "Usage_Summary");
+      // Summary sheet: title + table
+      const wsSummary = workbook.addWorksheet("Usage_Summary");
+      wsSummary.addRow([`Daily Usage Report-Dated: ${currentDate}`]);
+      wsSummary.addRow([]); // blank row
+      wsSummary.addRow(summaryHeaders);
+      wsSummary.addRow(summaryRow);
 
-      // Save file
-      XLSX.writeFile(wb, `devices_data_${selectedProject}.xlsx`);
+      // Optionally set column widths
+      wsSummary.columns = summaryHeaders.map(() => ({ width: 18 }));
+
+      // Prepare chart data arrays (labels + values) in same sheet (Chart_Data region)
+      const chartStartRow = 6; // row index starting at 1
+      wsSummary.getRow(chartStartRow).getCell(1).value = "Duration";
+      wsSummary.getRow(chartStartRow).getCell(2).value = "Count";
+
+      const chartLabels = [
+        "Less than an hour",
+        "Between 1 to 2 hours",
+        "Between 2 to 3 hours",
+        "Between 3 to 4 hours",
+        "Above 4 hours",
+        "Not Used / Inactive",
+      ];
+      const chartValues = chartLabels.map((lbl) => {
+        if (lbl === "Not Used / Inactive") return durationCounts["Inactive"] || durationCounts["Not used"] || 0;
+        return durationCounts[lbl] || 0;
+      });
+
+      for (let i = 0; i < chartLabels.length; i++) {
+        wsSummary.getRow(chartStartRow + 1 + i).getCell(1).value = chartLabels[i];
+        wsSummary.getRow(chartStartRow + 1 + i).getCell(2).value = chartValues[i];
+      }
+
+      // Render a Chart.js chart to a hidden canvas and convert to PNG
+      const canvas = document.createElement("canvas");
+      canvas.width = 800;
+      canvas.height = 450;
+      const ctx = canvas.getContext("2d");
+      const chartInstance = new ChartJS(ctx, {
+        type: "pie", // or 'bar'
+        data: {
+          labels: chartLabels,
+          datasets: [
+            {
+              data: chartValues,
+              backgroundColor: ["#F59E0B", "#60A5FA", "#34D399", "#F97316", "#EF4444", "#9CA3AF"],
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          plugins: {
+            legend: { position: "right" },
+            title: { display: true, text: `Usage Summary - ${currentDate}` },
+          },
+        },
+      });
+
+      // Wait a tick for Chart to draw then get image
+      await new Promise((r) => setTimeout(r, 200));
+      const dataUrl = canvas.toDataURL("image/png");
+      chartInstance.destroy();
+
+      // Strip prefix and add as image to workbook
+      const base64 = dataUrl.split(",")[1];
+      const imageId = workbook.addImage({ base64, extension: "png" });
+
+      // Place image below the summary table (e.g., row 12)
+      wsSummary.addImage(imageId, {
+        tl: { col: 0, row: chartStartRow + chartLabels.length + 1 },
+        ext: { width: 600, height: 360 },
+      });
+
+      // Write workbook to buffer and download in browser
+      const buf = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buf], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `devices_data_${selectedProject}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Error downloading Excel:", error);
       alert("Failed to download Excel file.");
@@ -411,29 +482,27 @@ const DeviceData = () => {
         <div style={styles.loader}>
           <img src="/loading.gif" alt="Loading..." style={styles.loaderImage} />
         </div>
+
         <div style={styles.loadingTextContainer}>
           <p style={styles.loadingText}>
             Due to API rate limits, loading may take a few minutes. Please wait...
           </p>
+
           {isFetching && (
             <div style={styles.progressContainer}>
               <div>
                 <p style={styles.progressText}>
-                  Date Range: {startDate} to {endDate}
+                  {startDate && endDate
+                    ? `Date Range: ${new Date(startDate).toLocaleDateString("en-GB")} to ${new Date(endDate).toLocaleDateString("en-GB")}`
+                    : "Fetching..."}
                 </p>
-                <p style={styles.progressText}>
-                  Progress: {fetchProgress.toFixed(2)}%
-                </p>
+                <p style={styles.progressText}>Progress: {Number(fetchProgress || 0).toFixed(2)}%</p>
               </div>
+
               <LinearProgress
                 variant="determinate"
-                value={fetchProgress}
-                sx={{
-                  ...styles.progressBar,
-                  "& .MuiLinearProgress-bar": {
-                    transition: "transform 0.5s linear",
-                  },
-                }}
+                value={Math.max(0, Math.min(100, Number(fetchProgress || 0)))}
+                style={styles.progressBar}
               />
             </div>
           )}
@@ -662,9 +731,6 @@ const DeviceData = () => {
                   <td style={styles.tableData}>{item.udise}</td>
                   <td style={styles.tableData}>{item.district}</td>
                   <td style={styles.tableData}>{item.block}</td>
-                  {/* <td style={styles.tableData}>
-                    {formatDateTime(item.last_seen_on)}
-                  </td> */}
                   <td style={styles.tableData}>
                     <span
                       style={{
@@ -680,7 +746,6 @@ const DeviceData = () => {
                   <td style={styles.tableData}>{item.active_dates}</td>
                   <td style={styles.tableData}>{item.total_active_duration}</td>
                   <td style={styles.tableData}>{getApproximateDuration(item.total_active_duration)}</td>
-                  {/* <td style={styles.tableData}>{item.approximate_duration}</td> */}
                   <td style={styles.tableData}>{convertToSeconds(item.total_active_duration)}</td>
                   <td style={styles.tableData}>{item.hm_name}</td>
                   <td style={styles.tableData}>{item.hm_contact_numbers}</td>
