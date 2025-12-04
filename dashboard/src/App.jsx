@@ -69,14 +69,14 @@ const getApproximateDuration = (duration) => {
   if (!duration || duration === "0 hr 0 min 0 sec" || duration === "0 sec") {
     return "Not used";
   }
-  
+
   const matches = duration.match(/(\d+)\s*hr\s*(\d+)\s*min\s*(\d+)\s*sec|(\d+)\s*min\s*(\d+)\s*sec|(\d+)\s*sec/);
   if (!matches) return "Invalid duration";
 
   const hours = parseInt(matches[1] || 0);
   const minutes = parseInt(matches[2] || matches[4] || 0);
   const seconds = parseInt(matches[3] || matches[5] || matches[6] || 0);
-  
+
   const totalHours = hours + (minutes / 60) + (seconds / 3600);
 
   if (totalHours < 1) {
@@ -88,7 +88,7 @@ const getApproximateDuration = (duration) => {
   } else if (totalHours >= 3 && totalHours < 4) {
     return "Between 3 to 4 hours";
   } else {
-     return "Above 4 hours";
+    return "Above 4 hours";
   }
 };
 
@@ -195,68 +195,61 @@ const DeviceData = () => {
   };
 
   const handleFetchData = async () => {
-  if (!startDate || !endDate) {
-    alert("Please select both start and end dates.");
-    return;
-  }
-  setLoading(true);
-  setIsFetching(true);
-  setFetchProgress(0);
-  try {
-    // First API call to trigger data fetching
-    await axios.get(
-      `https://dashboard-ssa-production.up.railway.app/api/fetchActiveStatusData/${selectedProject}`,
-      {
-        params: { fromDate: startDate, toDate: endDate },
-      }
-    );
-
-    // Start polling for progress
-    const pollProgress = setInterval(async () => {
-      try {
-        const progressResponse = await axios.get(
-          `https://dashboard-ssa-production.up.railway.app/api/fetchProgress/${selectedProject}`
-        );
-        
-        const { progress, isFetching: isStillFetching } = progressResponse.data;
-        console.log(`Progress: ${progress}%, Still fetching: ${isStillFetching}`);
-        
-        // Update progress state
-        setFetchProgress(parseFloat(progress));
-        
-        // Check if fetching is complete
-        if (!isStillFetching) {
-          clearInterval(pollProgress);
-          await fetchData(1); // Refresh data
-          setIsFetching(false);
-          setLoading(false);
-          alert("Data fetched successfully!");
+    if (!startDate || !endDate) {
+      alert("Please select both start and end dates.");
+      return;
+    }
+    setLoading(true);
+    setIsFetching(true);
+    setFetchProgress(0);
+    try {
+      // First API call to trigger data fetching
+      await axios.get(
+        `https://dashboard-ssa-production.up.railway.app/api/fetchActiveStatusData/${selectedProject}`,
+        {
+          params: { fromDate: startDate, toDate: endDate },
         }
-      } catch (error) {
-        console.error("Progress polling error:", error);
+      );
+
+      const pollProgress = setInterval(async () => {
+        try {
+          const progressResponse = await axios.get(
+            `https://dashboard-ssa-production.up.railway.app/api/fetchProgress/${selectedProject}`
+          );
+
+          const { progress, isFetching: isStillFetching, completedPages, totalPages } = progressResponse.data;
+
+          setFetchProgress(progress);
+
+          if (!isStillFetching || progress >= 100) {
+            clearInterval(pollProgress);
+            setIsFetching(false);
+            setLoading(false);
+            await fetchData(1);
+            alert("Data fetched and updated successfully!");
+          }
+        } catch (error) {
+          console.error("Polling error:", error);
+        }
+      }, 3000);
+
+      // Set a timeout to stop polling after 5 minutes
+      setTimeout(() => {
         clearInterval(pollProgress);
         setIsFetching(false);
         setLoading(false);
-      }
-    }, 2000); // Poll every 2 seconds
+        if (fetchProgress < 100) {
+          alert("Data fetching timed out. Please try again.");
+        }
+      }, 5 * 60 * 1000);
 
-    // Set a timeout to stop polling after 5 minutes
-    setTimeout(() => {
-      clearInterval(pollProgress);
+    } catch (error) {
+      console.error("Error fetching data:", error);
       setIsFetching(false);
       setLoading(false);
-      if (fetchProgress < 100) {
-        alert("Data fetching timed out. Please try again.");
-      }
-    }, 5 * 60 * 1000);
-
-  } catch (error) {
-    console.error("Error fetching data:", error);
-    setIsFetching(false);
-    setLoading(false);
-    alert("Error fetching data. Please try again.");
-  }
-};
+      alert("Error fetching data. Please try again.");
+    }
+  };
 
   const handleFilter = (status) => {
     if (status === "all") {
@@ -399,8 +392,8 @@ const DeviceData = () => {
 
       // Save workbook
       const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], { 
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -532,8 +525,8 @@ const DeviceData = () => {
             <span style={styles.dateRangeText}>
               {startDate && endDate
                 ? `${new Date(startDate).toLocaleDateString(
-                    "en-GB"
-                  )} to ${new Date(endDate).toLocaleDateString("en-GB")}`
+                  "en-GB"
+                )} to ${new Date(endDate).toLocaleDateString("en-GB")}`
                 : "Please select a date range."}
             </span>
           </h4>
@@ -567,11 +560,11 @@ const DeviceData = () => {
             <span style={styles.dateRangeText}>
               {startDate && endDate
                 ? `${new Date(startDate).toLocaleDateString(
-                    "en-GB"
-                  )} to ${new Date(endDate).toLocaleDateString("en-GB")}`
+                  "en-GB"
+                )} to ${new Date(endDate).toLocaleDateString("en-GB")}`
                 : `${new Date().toLocaleDateString(
-                    "en-GB"
-                  )} to ${new Date().toLocaleDateString("en-GB")}`}
+                  "en-GB"
+                )} to ${new Date().toLocaleDateString("en-GB")}`}
             </span>
           </h4>
           <div style={styles.scrollable}>
