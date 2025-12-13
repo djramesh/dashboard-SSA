@@ -532,9 +532,10 @@ app.get("/api/fetchProgress/:projectId", (req, res) => {
   });
 });
 
+// Ye function replace kar do server.js mein
 app.get("/api/fetchActiveStatusData/:projectId", async (req, res) => {
   const { projectId } = req.params;
-  const { fromDate, toDate } = req.query;
+  let { fromDate, toDate } = req.query;
 
   if (!["2228", "3570"].includes(projectId)) {
     return res.status(400).json({ error: "Invalid project ID" });
@@ -544,16 +545,70 @@ app.get("/api/fetchActiveStatusData/:projectId", async (req, res) => {
     return res.status(400).json({ error: "Please provide both fromDate and toDate." });
   }
 
-  try {
-    fetchProgressMap[projectId].isFetching = true;
-    fetchProgressMap[projectId].completedPages = 0;
-    fetchProgressMap[projectId].totalPages = 0;
+  // Convert to Date objects
+  const start = new Date(fromDate);
+  const end = new Date(toDate);
 
-    await fetchAndStoreActiveStatusData(projectId, fromDate, toDate);
-    res.json({ message: `Active status data updated successfully for project ${projectId}!` });
+  if (end < start) {
+    return res.status(400).json({ error: "toDate cannot be before fromDate" });
+  }
+
+  try {
+    // Reset progress
+    fetchProgressMap[projectId] = {
+      completedPages: 0,
+      totalPages: 0,
+      isFetching: true,
+      lastUpdated: Date.now(),
+      currentChunk: 1,
+      totalChunks: 0
+    };
+
+    // Split into 7-day chunks
+    const chunkSizeDays = 7;
+    const chunks = [];
+    let currentStart = new Date(start);
+
+    while (currentStart <= end) {
+      const chunkEnd = new Date(currentStart);
+      chunkEnd.setDate(chunkEnd.getDate() + chunkSizeDays - 1);
+
+      if (chunkEnd > end) chunkEnd.setDate(end.getDate());
+
+      chunks.push({
+        from: currentStart.toISOString().split('T')[0],
+        to: chunkEnd.toISOString().split('T')[0]
+      });
+
+      currentStart.setDate(currentStart.getDate() + chunkSizeDays);
+    }
+
+    fetchProgressMap[projectId].totalChunks = chunks.length;
+
+    // Process each chunk sequentially (safe + no rate limit)
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      fetchProgressMap[projectId].currentChunk = i + 1;
+
+      console.log(`Fetching chunk ${i + 1}/${chunks.length}: ${chunk.from} to ${chunk.to}`);
+      await fetchAndStoreActiveStatusData(projectId, chunk.from, chunk.to);
+
+      // Small delay between chunks
+      if (i < chunks.length - 1) {
+        await new Promise(r => setTimeout(r, 3000));
+      }
+    }
+
+    fetchProgressMap[projectId].isFetching = false;
+    console.log(`All chunks completed for project ${projectId}`);
+    res.json({ 
+      message: `Successfully fetched data from ${fromDate} to ${toDate} in ${chunks.length} chunks!` 
+    });
+
   } catch (error) {
-    console.error(`Error in API for project ${projectId}:`, error.message);
-    res.status(500).json({ error: `Failed to fetch or store active status data for project ${projectId}.` });
+    console.error(`Error in fetchActiveStatusData for project ${projectId}:`, error.message);
+    fetchProgressMap[projectId].isFetching = false;
+    res.status(500).json({ error: "Failed to fetch data. Try smaller date range." });
   }
 });
 
