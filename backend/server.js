@@ -595,7 +595,7 @@ app.get("/api/fetchActiveStatusData/:projectId", async (req, res) => {
 
       // Small delay between chunks
       if (i < chunks.length - 1) {
-        await new Promise(r => setTimeout(r, 30000));
+        await new Promise(r => setTimeout(r, 3000000));
       }
     }
 
