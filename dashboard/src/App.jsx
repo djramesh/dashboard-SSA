@@ -6,7 +6,6 @@ import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import * as XLSX from "xlsx";
 import LinearProgress from "@mui/material/LinearProgress";
-import ExcelJS from 'exceljs'; // Add this import at the top
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -63,33 +62,6 @@ const convertToSeconds = (duration) => {
   }
 
   return totalSeconds;
-};
-
-const getApproximateDuration = (duration) => {
-  if (!duration || duration === "0 hr 0 min 0 sec" || duration === "0 sec") {
-    return "Not used";
-  }
-
-  const matches = duration.match(/(\d+)\s*hr\s*(\d+)\s*min\s*(\d+)\s*sec|(\d+)\s*min\s*(\d+)\s*sec|(\d+)\s*sec/);
-  if (!matches) return "Invalid duration";
-
-  const hours = parseInt(matches[1] || 0);
-  const minutes = parseInt(matches[2] || matches[4] || 0);
-  const seconds = parseInt(matches[3] || matches[5] || matches[6] || 0);
-
-  const totalHours = hours + (minutes / 60) + (seconds / 3600);
-
-  if (totalHours < 1) {
-    return "Less than an hour";
-  } else if (totalHours >= 1 && totalHours < 2) {
-    return "Between 1 to 2 hours";
-  } else if (totalHours >= 2 && totalHours < 3) {
-    return "Between 2 to 3 hours";
-  } else if (totalHours >= 3 && totalHours < 4) {
-    return "Between 3 to 4 hours";
-  } else {
-    return "Above 4 hours";
-  }
 };
 
 const districtsOfAssam = [
@@ -194,62 +166,68 @@ const DeviceData = () => {
     }
   };
 
-  const handleFetchData = async () => {
-    if (!startDate || !endDate) {
-      alert("Please select both start and end dates.");
-      return;
-    }
-    setLoading(true);
-    setIsFetching(true);
-    setFetchProgress(0);
-    try {
-      // First API call to trigger data fetching
-      await axios.get(
-        `https://dashboard-ssa-production.up.railway.app/api/fetchActiveStatusData/${selectedProject}`,
-        {
-          params: { fromDate: startDate, toDate: endDate },
-        }
-      );
-
-      const pollProgress = setInterval(async () => {
-        try {
-          const progressResponse = await axios.get(
-            `https://dashboard-ssa-production.up.railway.app/api/fetchProgress/${selectedProject}`
-          );
-
-          const { progress, isFetching: isStillFetching, completedPages, totalPages } = progressResponse.data;
-
-          setFetchProgress(progress);
-
-          if (!isStillFetching || progress >= 100) {
-            clearInterval(pollProgress);
-            setIsFetching(false);
-            setLoading(false);
-            await fetchData(1);
-            alert("Data fetched and updated successfully!");
-          }
-        } catch (error) {
-          console.error("Polling error:", error);
-        }
-      }, 3000);
-
-      // Set a timeout to stop polling after 5 minutes
-      setTimeout(() => {
+const handleFetchData = async () => {
+  if (!startDate || !endDate) {
+    alert("Please select both start and end dates.");
+    return;
+  }
+  setLoading(true);
+  setIsFetching(true);
+  setFetchProgress(0);
+  try {
+    await axios.get(
+      `https://dashboard-ssa-production.up.railway.app/api/fetchActiveStatusData/${selectedProject}`,
+      {
+        params: { fromDate: startDate, toDate: endDate },
+      }
+    );
+    let pollCount = 0;
+    const maxPolls = 2400; // Increased to 20 minutes (2400 * 500ms)
+    const pollProgress = setInterval(async () => {
+      pollCount++;
+      if (pollCount > maxPolls) {
         clearInterval(pollProgress);
         setIsFetching(false);
         setLoading(false);
-        if (fetchProgress < 100) {
-          alert("Data fetching timed out. Please try again.");
+        alert("Data fetching timed out after 20 minutes. Please try again.");
+        return;
+      }
+      try {
+        const progressResponse = await axios.get(
+          `https://dashboard-ssa-production.up.railway.app/api/fetchProgress/${selectedProject}`
+        );
+        const { progress, isFetching, completedPages, totalPages } = progressResponse.data;
+        console.log(
+          `Client Progress: ${progress}% | isFetching: ${isFetching} | Pages: ${completedPages}/${totalPages}`
+        );
+        if (progressResponse.data && typeof progress === "number") {
+          setFetchProgress(progress);
+        } else {
+          console.warn("Invalid progress response:", progressResponse.data);
         }
-      }, 5 * 60 * 1000);
-
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      setIsFetching(false);
-      setLoading(false);
-      alert("Error fetching data. Please try again.");
-    }
-  };
+        setIsFetching(isFetching);
+        if (!isFetching && progress >= 100) {
+          clearInterval(pollProgress);
+          await fetchData(1);
+          setIsFetching(false);
+          setLoading(false);
+          alert("Data fetched successfully!");
+        }
+      } catch (error) {
+        console.error("Polling error:", error.message);
+        clearInterval(pollProgress);
+        setIsFetching(false);
+        setLoading(false);
+        alert("Polling failed");
+      }
+    }, 1000); // Increased interval to 1 second
+  } catch (error) {
+    console.error("Error in fetchActiveStatusData:", error.message);
+    setIsFetching(false);
+    setLoading(false);
+    alert("Error fetching data");
+  }
+};
 
   const handleFilter = (status) => {
     if (status === "all") {
@@ -276,155 +254,30 @@ const DeviceData = () => {
       const response = await axios.get(
         `https://dashboard-ssa-production.up.railway.app/api/all-devices/${selectedProject}`,
         {
-          params: { searchTerm, district: selectedDistrict, status: connectionStatus },
+          params: {
+            searchTerm,
+            district: selectedDistrict,
+            status: connectionStatus,
+          },
         }
       );
-
-      const devices = response.data.devices || [];
-
-      // Sheet 1: Detailed device data
-      const processedDevices = devices.map((d, idx) => ({
-        "S.No": idx + 1,
-        "ID": d.id,
-        "Name": d.name,
-        "Device Serial No": d.serial_no || "",
-        "UDISE code": d.udise || "",
-        "District": d.district || "",
-        "Block": d.block || "",
-        "Live Connection State": d.connection_state || "",
-        "Active Dates": d.active_dates || "",
-        "Total Active Duration": d.total_active_duration || "",
-        "Approximate Duration": getApproximateDuration(d.total_active_duration),
-        "HM Name": d.hm_name || "",
-        "HM Contact No.": d.hm_contact_numbers || "",
-      }));
-
-      // Stats for summary
-      const durationCounts = devices.reduce((acc, device) => {
-        const key = getApproximateDuration(device.total_active_duration);
-        acc[key] = (acc[key] || 0) + 1;
-        return acc;
-      }, {});
-
-      const totalClassrooms = devices.length;
-      const currentDate = new Date().toLocaleDateString("en-GB");
-
-      const workbook = new ExcelJS.Workbook();
-
-      // Devices sheet
-      const wsDevices = workbook.addWorksheet("Devices_Data");
-      if (processedDevices.length) {
-        wsDevices.addRow(Object.keys(processedDevices[0]));
-        processedDevices.forEach(row => wsDevices.addRow(Object.values(row)));
-      }
-
-      // Summary sheet
-      const wsSummary = workbook.addWorksheet("Usage_Summary");
-
-      // Title with date
-      wsSummary.mergeCells('A1:J1');
-      const titleCell = wsSummary.getCell('A1');
-      titleCell.value = `Daily Usage Report-Dated: ${currentDate}`;
-      titleCell.alignment = { horizontal: 'center' };
-      titleCell.font = { bold: true, size: 14 };
-
-      // Add empty row
-      wsSummary.addRow([]);
-
-      // Summary table headers
-      const summaryHeaders = [
-        "Total Classroom",
-        "Less Than 1 Hrs",
-        "Between 1 to 2 Hrs",
-        "Between 2 to 3 Hrs",
-        "Between 3 to 4 Hrs",
-        "Above 4 Hrs",
-        "Not Used",
-        "Total Hr",
-        "Avg Usage Per Device(in minute)",
-        "Grand Total"
-      ];
-
-      // Summary data row
-      const summaryData = [
-        totalClassrooms,
-        durationCounts["Less than an hour"] || 0,
-        durationCounts["Between 1 to 2 hours"] || 0,
-        durationCounts["Between 2 to 3 hours"] || 0,
-        durationCounts["Between 3 to 4 hours"] || 0,
-        durationCounts["Above 4 hours"] || 0,
-        durationCounts["Not used"] || 0,
-        calculateTotalHours(devices),
-        calculateAvgMinutes(devices),
-        totalClassrooms
-      ];
-
-      // Add summary table
-      wsSummary.addRow(summaryHeaders);
-      wsSummary.addRow(summaryData);
-
-      // Style summary table
-      wsSummary.getRow(3).font = { bold: true };
-      wsSummary.columns.forEach(column => {
-        column.width = 20;
-        column.alignment = { horizontal: 'center' };
-      });
-
-      // Add chart data table
-      wsSummary.addRow([]); // Empty row for spacing
-      wsSummary.addRow(['Duration Distribution']);
-      wsSummary.addRow(['Duration Category', 'Number of Devices', 'Percentage']);
-
-      const chartData = [
-        ["Less than an hour", durationCounts["Less than an hour"] || 0],
-        ["Between 1 to 2 hours", durationCounts["Between 1 to 2 hours"] || 0],
-        ["Between 2 to 3 hours", durationCounts["Between 2 to 3 hours"] || 0],
-        ["Between 3 to 4 hours", durationCounts["Between 3 to 4 hours"] || 0],
-        ["Above 4 hours", durationCounts["Above 4 hours"] || 0],
-        ["Not Used", durationCounts["Not used"] || 0]
-      ];
-
-      // Add chart data with percentages
-      chartData.forEach(([category, count]) => {
-        const percentage = ((count / totalClassrooms) * 100).toFixed(2);
-        wsSummary.addRow([category, count, `${percentage}%`]);
-      });
-
-      // Save workbook
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `devices_data_${selectedProject}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
+      const allDevices = response.data.devices || [];
+      const sanitizedData = allDevices.map(
+        ({ hm_contact_number, ...rest }) => ({
+          ...rest,
+          total_active_duration_seconds: convertToSeconds(rest.total_active_duration), // Add seconds column
+        })
+      );
+      const ws = XLSX.utils.json_to_sheet(sanitizedData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Devices_db");
+      XLSX.writeFile(wb, `devices_data_${selectedProject}.xlsx`);
     } catch (error) {
       console.error("Error downloading Excel:", error);
       alert("Failed to download Excel file.");
     } finally {
       setLoading(false);
     }
-  };
-
-  // Helper functions for calculations
-  const calculateTotalHours = (devices) => {
-    return devices.reduce((total, device) => {
-      const seconds = convertToSeconds(device.total_active_duration);
-      return total + (seconds / 3600);
-    }, 0).toFixed(2);
-  };
-
-  const calculateAvgMinutes = (devices) => {
-    const totalSeconds = devices.reduce((total, device) => {
-      return total + convertToSeconds(device.total_active_duration);
-    }, 0);
-    return ((totalSeconds / 60) / devices.length).toFixed(2);
   };
 
   const handleNextPage = () => {
@@ -445,29 +298,24 @@ const DeviceData = () => {
     return (
       <div style={styles.loadingContainer}>
         <div style={styles.loader}>
-          <img src="/loading.gif" alt="Loading..." style={styles.loaderImage} />
+          <img
+            src="/loading.gif"
+            alt="Loading..."
+            style={styles.loaderImage}
+          />
         </div>
-
         <div style={styles.loadingTextContainer}>
-          <p style={styles.loadingText}>
-            Due to API rate limits, loading may take a few minutes. Please wait...
-          </p>
-
+          <p style={styles.loadingText}>Due to API rate limits, loading may slow down. Please wait...</p>
           {isFetching && (
             <div style={styles.progressContainer}>
               <div>
-                <p style={styles.progressText}>
-                  {startDate && endDate
-                    ? `Date Range: ${new Date(startDate).toLocaleDateString("en-GB")} to ${new Date(endDate).toLocaleDateString("en-GB")}`
-                    : "Fetching..."}
-                </p>
-                <p style={styles.progressText}>Progress: {Number(fetchProgress || 0).toFixed(2)}%</p>
+                <p style={styles.progressText}>Date Range: {startDate} to {endDate}</p>
+                <p style={styles.progressText}>Fetching Data: {fetchProgress.toFixed(2)}%</p>
               </div>
-
               <LinearProgress
                 variant="determinate"
-                value={Math.max(0, Math.min(100, Number(fetchProgress || 0)))}
-                style={styles.progressBar}
+                value={fetchProgress}
+                sx={styles.progressBar}
               />
             </div>
           )}
@@ -487,7 +335,7 @@ const DeviceData = () => {
           style={styles.dropdown}
         >
           <option value="2228">FY24-25 (Project 2228)</option>
-          <option value="3570">FY23-24 (Project 3570)</option>
+          <option value="3570">FY23-24 (Project 3580)</option>
         </select>
       </div>
       <h1 style={styles.header}>Dashboard of Assam Smart Classroom Project</h1>
@@ -525,8 +373,8 @@ const DeviceData = () => {
             <span style={styles.dateRangeText}>
               {startDate && endDate
                 ? `${new Date(startDate).toLocaleDateString(
-                  "en-GB"
-                )} to ${new Date(endDate).toLocaleDateString("en-GB")}`
+                    "en-GB"
+                  )} to ${new Date(endDate).toLocaleDateString("en-GB")}`
                 : "Please select a date range."}
             </span>
           </h4>
@@ -560,11 +408,11 @@ const DeviceData = () => {
             <span style={styles.dateRangeText}>
               {startDate && endDate
                 ? `${new Date(startDate).toLocaleDateString(
-                  "en-GB"
-                )} to ${new Date(endDate).toLocaleDateString("en-GB")}`
+                    "en-GB"
+                  )} to ${new Date(endDate).toLocaleDateString("en-GB")}`
                 : `${new Date().toLocaleDateString(
-                  "en-GB"
-                )} to ${new Date().toLocaleDateString("en-GB")}`}
+                    "en-GB"
+                  )} to ${new Date().toLocaleDateString("en-GB")}`}
             </span>
           </h4>
           <div style={styles.scrollable}>
@@ -663,14 +511,13 @@ const DeviceData = () => {
                   "S.No",
                   "ID",
                   "Name",
-                  "Device Serial No",
                   "UDISE code",
                   "District",
                   "Block",
+                  "Last Seen On",
                   "Live Connection State",
                   "Active Dates",
                   "Total Active Duration",
-                  "Approximate Duration",
                   "Total Active Duration (Seconds)",
                   "HM Name",
                   "HM Contact No.",
@@ -692,10 +539,12 @@ const DeviceData = () => {
                   </td>
                   <td style={styles.tableData}>{item.id}</td>
                   <td style={styles.tableData}>{item.name}</td>
-                  <td style={styles.tableData}>{item.serial_no}</td>
                   <td style={styles.tableData}>{item.udise}</td>
                   <td style={styles.tableData}>{item.district}</td>
                   <td style={styles.tableData}>{item.block}</td>
+                  <td style={styles.tableData}>
+                    {formatDateTime(item.last_seen_on)}
+                  </td>
                   <td style={styles.tableData}>
                     <span
                       style={{
@@ -710,7 +559,6 @@ const DeviceData = () => {
                   </td>
                   <td style={styles.tableData}>{item.active_dates}</td>
                   <td style={styles.tableData}>{item.total_active_duration}</td>
-                  <td style={styles.tableData}>{getApproximateDuration(item.total_active_duration)}</td>
                   <td style={styles.tableData}>{convertToSeconds(item.total_active_duration)}</td>
                   <td style={styles.tableData}>{item.hm_name}</td>
                   <td style={styles.tableData}>{item.hm_contact_numbers}</td>
