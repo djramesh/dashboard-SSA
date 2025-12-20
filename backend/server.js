@@ -3,104 +3,46 @@ const axios = require("axios");
 const cors = require("cors");
 const mysql = require("mysql2/promise");
 const NodeCache = require("node-cache");
-const https = require("https");
 require("dotenv").config();
 
-/* ================= BASIC SETUP ================= */
-
 const app = express();
-const PORT = process.env.PORT || 3006;
+const PORT = process.env.PORT || 3006; // Use Railway's PORT or fallback to 3006
 const cache = new NodeCache({ stdTTL: 30 });
-
-app.use(express.json());
-const whitelist = [
-  "https://ssaassamsmartclassroomschoolnetindia.com",
-  "http://localhost:3000",
-  "http://127.0.0.1:3000" 
-];
-
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || whitelist.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-}));
-
-/* ================= API KEYS ================= */
 
 const API_KEYS = {
   "2228": "526906b4a7c546fcade5fc370ed6f94c",
   "3570": "0f708bc142624a1ba8209359cb65d5b7"
 };
 
-/* ================= MYSQL POOL ================= */
+app.use(
+  cors({
+    origin: [
+      "https://ssaassamsmartclassroomschoolnetindia.com",
+      "http://localhost:3000", // For local development
+    ],
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    optionsSuccessStatus: 200,
+  })
+);
+app.use(express.json());
 
 const dbPool = mysql.createPool({
   connectionLimit: 10,
-  uri: process.env.DATABASE_URL,
-  waitForConnections: true,
-  enableKeepAlive: true,
-  keepAliveInitialDelay: 10000
+  uri: process.env.DATABASE_URL || "mysql://root:ZXXpbahTXoxLeVYxeGIMpdjdruSZqRqv@mysql.railway.internal:3306/railway",
 });
-
-/* ================= AXIOS SAFE INSTANCE ================= */
-
-const axiosClient = axios.create({
-  timeout: 60000,
-  httpsAgent: new https.Agent({ keepAlive: true }),
-  headers: { "Content-Type": "application/json" }
-});
-
-/* ================= RATE LIMIT QUEUE ================= */
-
-const MAX_CONCURRENT = 10;
-let activeRequests = 0;
-const queue = [];
-
-const enqueue = (fn) =>
-  new Promise((resolve, reject) => {
-    queue.push({ fn, resolve, reject });
-    processQueue();
-  });
-
-const processQueue = async () => {
-  if (activeRequests >= MAX_CONCURRENT || queue.length === 0) return;
-  const { fn, resolve, reject } = queue.shift();
-  activeRequests++;
-  try {
-    resolve(await fn());
-  } catch (e) {
-    reject(e);
-  } finally {
-    activeRequests--;
-    setTimeout(processQueue, 70); // ~850 req/min
-  }
-};
-
-const safeAxiosGet = (config) =>
-  enqueue(() => axiosClient(config));
-
-/* ================= PROGRESS ================= */
 
 const fetchProgressMap = {
-  2228: {},
-  3570: {}
+  2228: { completedPages: 0, totalPages: 0, isFetching: false },
+  3570: { completedPages: 0, totalPages: 0, isFetching: false },
 };
 
-/* ================= DB INIT ================= */
-
-(async () => {
-  const conn = await dbPool.getConnection();
-  await conn.query(`
-    CREATE TABLE IF NOT EXISTS project_2228_db (
+const initializeDatabase = async () => {
+  const connection = await dbPool.getConnection();
+  await connection.execute(`
+   CREATE TABLE IF NOT EXISTS project_2228_db (
       id INT PRIMARY KEY,
       name VARCHAR(255),
-      serial_no VARCHAR(255),
       udise VARCHAR(255),
       district VARCHAR(255),
       block VARCHAR(255),
@@ -113,16 +55,13 @@ const fetchProgressMap = {
       hm_name VARCHAR(255),
       hm_contact_numbers VARCHAR(30),
       active_dates TEXT,
-      approximate_duration VARCHAR(50),
       total_active_duration VARCHAR(50)
     )
   `);
-
-  await conn.query(`
+  await connection.execute(`
     CREATE TABLE IF NOT EXISTS project_3570_db (
       id INT PRIMARY KEY,
       name VARCHAR(255),
-      searial_no VARCHAR(255),
       district VARCHAR(255),
       block VARCHAR(255),
       power_on_time VARCHAR(50),
@@ -134,169 +73,468 @@ const fetchProgressMap = {
       hm_name VARCHAR(255),
       hm_contact_numbers VARCHAR(30),
       active_dates TEXT,
-      approximate_duration VARCHAR(50),
       total_active_duration VARCHAR(50)
     )
   `);
-  conn.release();
-})();
-
-/* ================= FETCH DEVICES ================= */
-
-const fetchAndStoreData = async (projectId) => {
-  const apiUrl =
-    projectId === "2228"
-      ? "https://api-in.scalefusion.com/api/v2/devices.json"
-      : "https://api.scalefusion.com/api/v2/devices.json?device_group_id=149219";
-
-  let cursor = null;
-  const conn = await dbPool.getConnection();
-
-  try {
-    do {
-      const res = await safeAxiosGet({
-        url: apiUrl,
-        params: { cursor },
-        headers: { Authorization: `Token ${API_KEYS[projectId]}` }
-      });
-
-      let devices = [];
-      let sql = "";
-
-      if (projectId === "2228") {
-        devices = res.data.devices.map(d => [
-          d.device.id,
-          d.device.name,
-          d.device.serial_no || "N/A",
-          d.device.custom_properties?.find(p => p.name === "Udise Code")?.value || "N/A",
-          d.device.custom_properties?.find(p => p.name === "District")?.value || "N/A",
-          d.device.custom_properties?.find(p => p.name === "Block")?.value || "N/A",
-          d.device.power_on_time,
-          d.device.power_off_time,
-          d.device.last_seen_on,
-          d.device.connection_state,
-          d.device.connection_status,
-          d.device.device_status,
-          d.device.custom_properties?.find(p => p.name === "HM Name")?.value || "N/A",
-          d.device.custom_properties?.find(p => p.name === "HM Contact Number")?.value || "N/A"
-        ]);
-
-        sql = `
-          INSERT INTO project_2228_db
-          (id,name,serial_no,udise,district,block,power_on_time,power_off_time,last_seen_on,
-           connection_state,connection_status,device_status,hm_name,hm_contact_numbers)
-          VALUES ?
-          ON DUPLICATE KEY UPDATE
-            name=VALUES(name),
-            serial_no=VALUES(serial_no),
-            udise=VALUES(udise),
-            district=VALUES(district),
-            block=VALUES(block),
-            power_on_time=VALUES(power_on_time),
-            power_off_time=VALUES(power_off_time),
-            last_seen_on=VALUES(last_seen_on),
-            connection_state=VALUES(connection_state),
-            connection_status=VALUES(connection_status),
-            device_status=VALUES(device_status),
-            hm_name=VALUES(hm_name),
-            hm_contact_numbers=VALUES(hm_contact_numbers)
-        `;
-      } else {
-        devices = res.data.devices.map(d => [
-          d.device.id,
-          d.device.name,
-          d.device.serial_no || "N/A",
-          d.device.custom_properties?.find(p => p.name === "District")?.value || "N/A",
-          d.device.custom_properties?.find(p => p.name === "Block")?.value || "N/A",
-          d.device.power_on_time,
-          d.device.power_off_time,
-          d.device.last_seen_on,
-          d.device.connection_state,
-          d.device.connection_status,
-          d.device.device_status,
-          d.device.custom_properties?.find(p => p.name === "HM Name")?.value || "N/A",
-          d.device.custom_properties?.find(p => p.name === "HM Contact Number")?.value || "N/A"
-        ]);
-
-        sql = `
-          INSERT INTO project_3570_db
-          (id,name,serial_no,district,block,power_on_time,power_off_time,last_seen_on,
-           connection_state,connection_status,device_status,hm_name,hm_contact_numbers)
-          VALUES ?
-          ON DUPLICATE KEY UPDATE
-            name=VALUES(name),
-            serial_no=VALUES(serial_no),
-            district=VALUES(district),
-            block=VALUES(block),
-            power_on_time=VALUES(power_on_time),
-            power_off_time=VALUES(power_off_time),
-            last_seen_on=VALUES(last_seen_on),
-            connection_state=VALUES(connection_state),
-            connection_status=VALUES(connection_status),
-            device_status=VALUES(device_status),
-            hm_name=VALUES(hm_name),
-            hm_contact_numbers=VALUES(hm_contact_numbers)
-        `;
-      }
-
-      if (devices.length > 0) {
-        await conn.query(sql, [devices]);
-      }
-
-      cursor = res.data.next_cursor;
-    } while (cursor);
-  } catch (e) {
-    console.error(`Fetch failed ${projectId}:`, e.message);
-  } finally {
-    conn.release();
-  }
+  connection.release();
 };
 
+initializeDatabase().catch((err) =>
+  console.error("Database initialization failed:", err)
+);
 
-/* ================= AUTO FETCH ================= */
+const fetchAndStoreData = async (projectId) => {
+  const tableName = `project_${projectId}_db`;
+  const apiUrl =
+    projectId === "2228"
+      ? `https://api-in.scalefusion.com/api/v2/devices.json`
+      : `https://api.scalefusion.com/api/v2/devices.json?device_group_id=149219`;
+  const apiKey = API_KEYS[projectId];
 
+  if (!apiKey) {
+    console.error(`API key for project ${projectId} is not defined`);
+    return;
+  }
+
+  let nextCursor = null;
+  try {
+    const connection = await dbPool.getConnection();
+    do {
+      const response = await axios.get(apiUrl, {
+        params: { cursor: nextCursor },
+        headers: { Authorization: `Token ${apiKey}` },
+      });
+
+      const devices = response.data.devices.map((device) => {
+        const baseDevice = [
+          device.device.id,
+          device.device.name,
+          device.device.custom_properties.find((prop) => prop.name === "District")?.value || "N/A",
+          device.device.custom_properties.find((prop) => prop.name === "Block")?.value || "N/A",
+          device.device.power_on_time || null,
+          device.device.power_off_time || null,
+          device.device.last_seen_on || null,
+          device.device.connection_state || "N/A",
+          device.device.connection_status || "N/A",
+          device.device.device_status || "N/A",
+          device.device.custom_properties.find((prop) => prop.name === "HM Name")?.value || "N/A",
+          device.device.custom_properties.find((prop) => prop.name === "HM Contact Number")?.value || "N/A",
+        ];
+
+        // Include udise only for project 2228
+        if (projectId === "2228") {
+          baseDevice.splice(2, 0, device.device.custom_properties.find((prop) => prop.name === "Udise Code")?.value || "N/A");
+        }
+
+
+
+        return baseDevice;
+      });
+
+      // Define columns for the INSERT query based on projectId
+      const columns =
+        projectId === "2228"
+          ? `(id, name, udise, district, block, power_on_time, power_off_time, last_seen_on, connection_state, connection_status, device_status, hm_name, hm_contact_numbers)`
+          : `(id, name, district, block, power_on_time, power_off_time, last_seen_on, connection_state, connection_status, device_status, hm_name, hm_contact_numbers)`;
+
+      // Define columns for the ON DUPLICATE KEY UPDATE clause
+      const updateColumns =
+        projectId === "2228"
+          ? `name = VALUES(name), udise = VALUES(udise), district = VALUES(district), block = VALUES(block), power_on_time = VALUES(power_on_time), power_off_time = VALUES(power_off_time), last_seen_on = VALUES(last_seen_on), connection_state = VALUES(connection_state), connection_status = VALUES(connection_status), device_status = VALUES(device_status), hm_name = VALUES(hm_name), hm_contact_numbers = VALUES(hm_contact_numbers)`
+          : `name = VALUES(name), district = VALUES(district), block = VALUES(block), power_on_time = VALUES(power_on_time), power_off_time = VALUES(power_off_time), last_seen_on = VALUES(last_seen_on), connection_state = VALUES(connection_state), connection_status = VALUES(connection_status), device_status = VALUES(device_status), hm_name = VALUES(hm_name), hm_contact_numbers = VALUES(hm_contact_numbers)`;
+
+      await connection.query(
+        `INSERT INTO ${tableName} ${columns}
+         VALUES ?
+         ON DUPLICATE KEY UPDATE 
+         ${updateColumns}`,
+        [devices]
+      );
+      nextCursor = response.data.next_cursor;
+    } while (nextCursor);
+    await connection.end();
+  } catch (error) {
+    console.error(
+      `Error fetching or storing data for project ${projectId}:`,
+      error.message
+    );
+  }
+};
 setInterval(() => fetchAndStoreData("2228"), 5 * 60 * 1000);
 setInterval(() => fetchAndStoreData("3570"), 5 * 60 * 1000);
 fetchAndStoreData("2228");
 fetchAndStoreData("3570");
 
-/* ================= ROUTES (UNCHANGED) ================= */
+const fetchAndStoreActiveStatusData = async (projectId, fromDate, toDate) => {
+  const tableName = `project_${projectId}_db`;
+  const apiUrl =
+    projectId === "3570"
+      ? `https://api.scalefusion.com/api/v1/reports/device_availabilities.json?device_group_ids=149219`
+      : `https://api-in.scalefusion.com/api/v1/reports/device_availabilities.json`;
+  const apiKey = API_KEYS[projectId];
 
-/* Devices */
+  if (!apiKey) {
+    console.error(`API key for project ${projectId} is not defined`);
+    throw new Error(`API key for project ${projectId} is not defined`);
+  }
+
+  try {
+    const connection = await dbPool.getConnection();
+    const activeDataMap = new Map();
+    const allDeviceIds = new Set();
+
+    fetchProgressMap[projectId].isFetching = true;
+    fetchProgressMap[projectId].completedPages = 0;
+    fetchProgressMap[projectId].totalPages = 1; // Fallback
+
+    console.log(`Fetching first page for project ${projectId}...`);
+    const firstResponse = await axios.get(apiUrl, {
+      params: { from_date: fromDate, to_date: toDate, page: 1 },
+      headers: { Authorization: `Token ${apiKey}` },
+    });
+
+    // console.log(`First response data for project ${projectId}:`, firstResponse.data);
+    fetchProgressMap[projectId].totalPages = firstResponse.data.total_pages || 1;
+    console.log(`Total Pages for project ${projectId}: ${fetchProgressMap[projectId].totalPages}`);
+
+    // Process first page data
+    const devices = firstResponse.data.devices || [];
+    devices.forEach((device) => {
+      const deviceId = device.device_id;
+      const deviceName = device.device_name || "";
+      if (!deviceName.trim()) return;
+      allDeviceIds.add(deviceId);
+
+      if (device.availability_status === "active") {
+        const date = device.from_date.split(" ")[0];
+        if (!activeDataMap.has(deviceId)) {
+          activeDataMap.set(deviceId, { totalDuration: 0, activeDates: new Set() });
+        }
+        const deviceData = activeDataMap.get(deviceId);
+        if (device.duration_in_seconds === 0) {
+          deviceData.totalDuration += 1;
+        } else if (device.duration_in_seconds <= 99999) {
+          deviceData.totalDuration += device.duration_in_seconds;
+        }
+        deviceData.activeDates.add(date);
+      }
+    });
+    fetchProgressMap[projectId].completedPages += 1;
+    console.log(`Completed Page 1 for project ${projectId}: ${fetchProgressMap[projectId].completedPages}/${fetchProgressMap[projectId].totalPages}`);
+
+    const processPage = async (page) => {
+      let retries = 0;
+      const maxRetries = 5;
+      let delay = 1000;
+
+      while (retries < maxRetries) {
+        try {
+          console.log(`Fetching page ${page} for project ${projectId}...`);
+          const response = await axios.get(apiUrl, {
+            params: { from_date: fromDate, to_date: toDate, page },
+            headers: { Authorization: `Token ${apiKey}` },
+          });
+
+          const devices = response.data.devices || [];
+          devices.forEach((device) => {
+            const deviceId = device.device_id;
+            const deviceName = device.device_name || "";
+            if (!deviceName.trim()) return;
+            allDeviceIds.add(deviceId);
+
+            if (device.availability_status === "active") {
+              const date = device.from_date.split(" ")[0];
+              if (!activeDataMap.has(deviceId)) {
+                activeDataMap.set(deviceId, { totalDuration: 0, activeDates: new Set() });
+              }
+              const deviceData = activeDataMap.get(deviceId);
+              if (device.duration_in_seconds === 0) {
+                deviceData.totalDuration += 1;
+              } else if (device.duration_in_seconds <= 99999) {
+                deviceData.totalDuration += device.duration_in_seconds;
+              }
+              deviceData.activeDates.add(date);
+            }
+          });
+
+          fetchProgressMap[projectId].completedPages += 1;
+          console.log(
+            `Completed Page for project ${projectId}: ${fetchProgressMap[projectId].completedPages}/${fetchProgressMap[projectId].totalPages}`
+          );
+          return;
+        } catch (error) {
+          if (error.response && error.response.status === 429) {
+            retries++;
+            console.warn(
+              `Rate limit hit on page ${page} for project ${projectId}. Retrying in ${delay / 1000} seconds...`
+            );
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            delay *= 2; // Exponential backoff
+          } else {
+            console.error(`Error fetching page ${page} for project ${projectId}:`, error.message);
+            throw error;
+          }
+        }
+      }
+      throw new Error(
+        `Failed to fetch page ${page} for project ${projectId} after ${maxRetries} retries due to rate limit.`
+      );
+    };
+
+    const batchSize = 5;
+    const pageBatches = [];
+    for (let i = 2; i <= fetchProgressMap[projectId].totalPages; i += batchSize) {
+      const batch = Array.from(
+        { length: Math.min(batchSize, fetchProgressMap[projectId].totalPages - i + 1) },
+        (_, index) => i + index
+      );
+      pageBatches.push(batch);
+    }
+
+    for (const batch of pageBatches) {
+      await Promise.all(batch.map((page) => processPage(page)));
+      // Optional: Force update progress endpoint after each batch
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Small delay between batches
+    }
+
+    // Rest of the function (updates, inactive, etc.) remains same
+    const [existingDevices] = await connection.query(`SELECT id FROM ${tableName}`);
+    const existingDeviceIds = new Set(existingDevices.map((row) => row.id));
+
+    const updates = [];
+    for (const [deviceId, data] of activeDataMap.entries()) {
+      const humanReadableDuration = convertToHumanReadable(data.totalDuration);
+      updates.push([deviceId, [...data.activeDates].join(", "), humanReadableDuration]);
+    }
+
+    const inactiveDevices = [...existingDeviceIds].filter((id) => !allDeviceIds.has(id));
+    const inactiveUpdates = inactiveDevices.map((id) => [id, "Not active", "0 sec"]);
+
+    if (updates.length > 0) {
+      await connection.query(
+        `INSERT INTO ${tableName} (id, active_dates, total_active_duration) VALUES ?
+         ON DUPLICATE KEY UPDATE active_dates = VALUES(active_dates), total_active_duration = VALUES(total_active_duration)`,
+        [updates]
+      );
+    }
+
+    if (inactiveUpdates.length > 0) {
+      await connection.query(
+        `INSERT INTO ${tableName} (id, active_dates, total_active_duration) VALUES ?
+         ON DUPLICATE KEY UPDATE active_dates = VALUES(active_dates), total_active_duration = VALUES(total_active_duration)`,
+        [inactiveUpdates]
+      );
+    }
+
+    fetchProgressMap[projectId].isFetching = false;
+    if (fetchProgressMap[projectId].completedPages < fetchProgressMap[projectId].totalPages) {
+      fetchProgressMap[projectId].completedPages = fetchProgressMap[projectId].totalPages; // Ensure 100%
+    }
+    console.log(`Active status data updated successfully for project ${projectId}!`);
+    activeDataMap.clear();
+    allDeviceIds.clear();
+    connection.release();
+  } catch (error) {
+    fetchProgressMap[projectId].isFetching = false;
+    console.error(`Error fetching or storing active status data for project ${projectId}:`, error.message);
+    throw error;
+  }
+};
+
+const convertToHumanReadable = (seconds) => {
+  const hours = Math.floor(seconds / 3600);
+  seconds %= 3600;
+  const minutes = Math.floor(seconds / 60);
+  seconds %= 60;
+  return `${hours} hr ${minutes} min ${seconds} sec`;
+};
+
 app.get("/api/devices/:projectId", async (req, res) => {
   const { projectId } = req.params;
-  const { page = 1, limit = 10 } = req.query;
+  const { searchTerm = "", page = 1, limit = 10, district = "All", status = "All" } = req.query;
   const offset = (page - 1) * limit;
-  const [devices] = await dbPool.query(
-    `SELECT * FROM project_${projectId}_db LIMIT ? OFFSET ?`,
-    [Number(limit), Number(offset)]
-  );
-  res.json({ devices });
+  const tableName = `project_${projectId}_db`;
+
+  if (!["2228", "3570"].includes(projectId)) {
+    return res.status(400).json({ error: "Invalid project ID" });
+  }
+
+  try {
+    const connection = await dbPool.getConnection();
+    let query = `SELECT * FROM ${tableName} WHERE 1=1`;
+    const params = [];
+
+    if (searchTerm.trim()) {
+      query += ` AND (name LIKE ? OR id LIKE ?)`;
+      params.push(`%${searchTerm}%`, `%${searchTerm}%`);
+    }
+
+    if (district !== "All") {
+      query += ` AND district = ?`;
+      params.push(district);
+    }
+
+    if (status === "connected") {
+      query += ` AND total_active_duration != '0 sec'`;
+    } else if (status === "notConnected") {
+      query += ` AND total_active_duration = '0 sec'`;
+    }
+
+    query += ` LIMIT ? OFFSET ?`;
+    params.push(Number(limit), Number(offset));
+
+    const totalCountQuery = `SELECT 
+      COUNT(*) AS totalDevices, 
+      SUM(connection_state = 'Active') AS activeDevices, 
+      SUM(connection_state = 'Inactive') AS inactiveDevices, 
+      SUM(total_active_duration != '0 sec') AS connectedCount, 
+      SUM(total_active_duration = '0 sec') AS notConnectedCount 
+      FROM ${tableName}`;
+
+    const districtCountQuery = `SELECT district, 
+      SUM(total_active_duration != '0 sec') AS connected, 
+      SUM(total_active_duration = '0 sec') AS notConnected 
+      FROM ${tableName} GROUP BY district`;
+
+    const [devices] = await connection.query(query, params);
+    const [[totalCounts]] = await connection.query(totalCountQuery);
+    const [districtCounts] = await connection.query(districtCountQuery);
+
+    const totalDevices = totalCounts.totalDevices;
+    const activeDevices = totalCounts.activeDevices;
+    const inactiveDevices = totalCounts.inactiveDevices;
+    const connectedCount = totalCounts.connectedCount;
+    const notConnectedCount = totalCounts.notConnectedCount;
+    const totalPages = Math.ceil(devices.length > 0 ? totalDevices / limit : 1);
+
+    res.json({
+      devices,
+      totalDevices,
+      activeDevices,
+      inactiveDevices,
+      connectedCount,
+      notConnectedCount,
+      districtData: districtCounts,
+      currentPage: Number(page),
+      totalPages,
+    });
+
+    connection.release();
+  } catch (error) {
+    console.error(`Error fetching devices for project ${projectId}:`, error.message);
+    res.status(500).json({ error: `Failed to fetch devices from database for project ${projectId}` });
+  }
 });
 
-/* All Devices */
 app.get("/api/all-devices/:projectId", async (req, res) => {
-  const [devices] = await dbPool.query(
-    `SELECT * FROM project_${req.params.projectId}_db`
-  );
-  res.json({ devices });
+  const { projectId } = req.params;
+  const { searchTerm = "", district = "All", status = "All" } = req.query;
+  const tableName = `project_${projectId}_db`;
+
+  if (!["2228", "3570"].includes(projectId)) {
+    return res.status(400).json({ error: "Invalid project ID" });
+  }
+
+  try {
+    const connection = await dbPool.getConnection();
+    let query = `SELECT * FROM ${tableName} WHERE 1=1`;
+    const params = [];
+
+    if (searchTerm.trim()) {
+      query += ` AND (name LIKE ? OR id LIKE ?)`;
+      params.push(`%${searchTerm}%`, `%${searchTerm}%`);
+    }
+
+    if (district !== "All") {
+      query += ` AND district = ?`;
+      params.push(district);
+    }
+
+    if (status === "connected") {
+      query += ` AND total_active_duration != '0 sec'`;
+    } else if (status === "notConnected") {
+      query += ` AND total_active_duration = '0 sec'`;
+    }
+
+    const [devices] = await connection.query(query, params);
+    res.json({ devices });
+    connection.release();
+  } catch (error) {
+    console.error(`Error fetching all devices for project ${projectId}:`, error.message);
+    res.status(500).json({ error: `Failed to fetch all devices from database for project ${projectId}` });
+  }
 });
 
-/* Stats */
 app.get("/api/device-stats/:projectId", async (req, res) => {
-  const [[stats]] = await dbPool.query(
-    `SELECT COUNT(*) total FROM project_${req.params.projectId}_db`
-  );
-  res.json(stats);
+  const { projectId } = req.params;
+  const tableName = `project_${projectId}_db`;
+
+  if (!["2228", "3570"].includes(projectId)) {
+    return res.status(400).json({ error: "Invalid project ID" });
+  }
+
+  try {
+    const connection = await dbPool.getConnection();
+    const [[stats]] = await connection.query(
+      `SELECT COUNT(*) AS total, SUM(connection_state = 'Active') AS active, SUM(connection_state = 'Inactive') AS inactive FROM ${tableName}`
+    );
+    res.json(stats);
+    connection.release();
+  } catch (error) {
+    console.error(`Error fetching device stats for project ${projectId}:`, error.message);
+    res.status(500).json({ error: `Failed to fetch device stats from database for project ${projectId}` });
+  }
 });
 
-/* Progress */
 app.get("/api/fetchProgress/:projectId", (req, res) => {
-  res.json(fetchProgressMap[req.params.projectId] || {});
+  const { projectId } = req.params;
+
+  if (!["2228", "3570"].includes(projectId)) {
+    return res.status(400).json({ error: "Invalid project ID" });
+  }
+
+  const completed = fetchProgressMap[projectId].completedPages;
+  const total = fetchProgressMap[projectId].totalPages;
+  const progress =
+    total > 0
+      ? Math.round((completed / total) * 100)
+      : fetchProgressMap[projectId].isFetching
+        ? 0
+        : 100;
+  console.log(
+    `Progress Check for ${projectId}: Completed=${completed}, Total=${total}, Progress=${progress}%`
+  );
+  res.json({
+    isFetching: fetchProgressMap[projectId].isFetching,
+    progress: progress,
+    completedPages: completed,
+    totalPages: total,
+  });
 });
 
-/* ================= SERVER ================= */
+app.get("/api/fetchActiveStatusData/:projectId", async (req, res) => {
+  const { projectId } = req.params;
+  const { fromDate, toDate } = req.query;
 
-app.listen(PORT, () => {
-  console.log(`🔥 Server stable at http://localhost:${PORT}`);
+  if (!["2228", "3570"].includes(projectId)) {
+    return res.status(400).json({ error: "Invalid project ID" });
+  }
+
+  if (!fromDate || !toDate) {
+    return res.status(400).json({ error: "Please provide both fromDate and toDate." });
+  }
+
+  try {
+    fetchProgressMap[projectId].isFetching = true;
+    fetchProgressMap[projectId].completedPages = 0;
+    fetchProgressMap[projectId].totalPages = 0;
+
+    await fetchAndStoreActiveStatusData(projectId, fromDate, toDate);
+    res.json({ message: `Active status data updated successfully for project ${projectId}!` });
+  } catch (error) {
+    console.error(`Error in API for project ${projectId}:`, error.message);
+    res.status(500).json({ error: `Failed to fetch or store active status data for project ${projectId}.` });
+  }
 });
+
+app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
