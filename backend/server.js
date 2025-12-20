@@ -14,10 +14,9 @@ const cache = new NodeCache({ stdTTL: 30 });
 
 app.use(express.json());
 const whitelist = [
-  "https://ssasmartclassroom.schoolnetindia.com",
+  "https://ssaassamsmartclassroomschoolnetindia.com",
   "http://localhost:3000",
-  "http://127.0.0.1:3000",
-  "https://ssaassamsmartclassroomschoolnetindia.com" 
+  "http://127.0.0.1:3000" 
 ];
 
 app.use(cors({
