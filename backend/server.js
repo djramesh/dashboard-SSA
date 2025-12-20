@@ -9,7 +9,7 @@ require("dotenv").config();
 /* ================= BASIC SETUP ================= */
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3006;
 const cache = new NodeCache({ stdTTL: 30 });
 
 app.use(express.json());
