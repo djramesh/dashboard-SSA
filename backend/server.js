@@ -18,6 +18,7 @@ app.use(
   cors({
     origin: [
       "https://ssaassamsmartclassroomschoolnetindia.com",
+      "https://ssasmartclassroomschoolnetindia.netlify.app",
       "http://localhost:3000", // For local development
     ],
     methods: ["GET", "POST", "OPTIONS"],
